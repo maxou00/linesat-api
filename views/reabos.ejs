@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Reabonnements</title>
+		<link rel='stylesheet' href='/stylesheets/style.css' />
+		<link rel='stylesheet' href='/stylesheets/form.css' />
+		<link rel='stylesheet' href='/stylesheets/overlay.css' />
+	</head>
+	<body>
+		<div class="root">
+			<%-include header.ejs%>
+			<section class='main-body'>
+				<div class="scaffold">
+				    <div class="appbar">
+						<h1>Réabonnements</h1>
+                        <div class='actions'>
+                            <button type="">Filtrer</button>
+                            <button type="">Nouveau</button>
+                        </div>
+					</div>
+					<div class='appbody'>
+						<table class="table">
+						    <tr>
+                                <th colspan='2'>Agence</th>
+                                <th colspan='3'>Bouquet</th>
+                                <th colspan='3'>Client</th>
+                                <th colspan="2">Compte </th>
+                                <th colspan="3">Informations</th>
+                            </tr>
+                            <tr>
+								<th>Reference</th>
+								<th>Nom</th>
+
+                                <th>Reference</th>
+                                <th>Designation</th>
+                                <th>Prix</th>
+
+                                <th>Reference</th>
+                                <th>Nom</th>
+                                <th>Prenom</th>
+
+                                <th>Reference</th>
+                                <th>Solde</th>
+
+                                <th>Carte</th>
+                                <th>Nombre de mois</th>
+                                <th>Cout total</th>
+							</tr>
+                            <%reabos.forEach(reabo=>{%>
+                            <tr>
+                                <td><%=reabo.idReabo%></td>
+                                <td><%=reabo.idReabo%></td>
+                            </tr>
+                            <%})%>
+						</table>
+					</div>
+					<div class="appmessage"></div>
+				</div> 
+			</section>
+		</div>
+		<script id='-form' type='text/html'>
+            <div class="overlay-content white">
+                <div class="appbar">
+                    <h3 class="title"></h3>
+                    <div class="actions">
+                        <button class="close-overlay" onclick='overlay.destroy();'>Fermer</button>
+                    </div>
+                </div>
+                <div class="container white">
+                    <form  name="newBouquet" action="/comptes/newclient" class="form" method='POST'>
+                        <div class="form-container full-width">
+                            <h3>Identité</h3>
+                            <div class="form-content full-width _fc_center">
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom" name="nom" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Prénom" name="prenom" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <select name="sexe" class="input outline white _iw90 _ip8px">
+                                        <option value="HOMME">Homme</option>
+                                        <option value="FEMME">Femme</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-container full-width _fc_center">
+                            <h3>Information de connexion</h3>
+                            <div class="form-content full-width _fc_center">
+                                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom d'utilisateur" name="username" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Mot de passe" name="password" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Repetez le mot de passe" name="repeat" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="button raised coral form-confirm _iw90 ">Inscrire ce client</button>
+                            <div class="form-content full-width _fc_center" id="form-message">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </script>
+		<script src="/javascripts/router.js"></script>
+		<script src="/javascripts/visibilities.js"></script>
+		<script src="/javascripts/handlers/bouquets.js"></script>
+	</body>
+</html>

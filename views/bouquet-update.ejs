@@ -1,0 +1,24 @@
+<div class="overlay-content white">
+    <div class="appbar">
+        <h1 class="title">Mise a Jour</h1>
+        <div class="actions">
+            <button class="close-overlay" onclick='overlay.destroy();'>Fermer</button>
+        </div>
+    </div>
+    <div class="container white">
+        <form  name="newBouquet" action="/bouquets/update/<%=bouquet.idbouquet%>" class="form" method="POST">
+            <div class="form-content full-width _fc_center">
+                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom du bouquet" name="nom" pattern="^(\w+)(-?)(\w+)$" required value="<%=bouquet.nom%>">
+            </div>
+            <div class="form-content full-width _fc_center">
+                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Description" name="description" value="<%=bouquet.description%>">
+            </div>
+            <div class="form-content full-width _fc_center">
+                <input type="number" class="input outline white _iw90 _ip8px" placeholder="Prix" name="prix" required value="<%=bouquet.prix%>">
+            </div>
+            <button type="submit" class="button raised coral form-confirm">Modifier ce bouquet</button>
+            <div class="form-content full-width _fc_center" id="form-message">
+            </div>
+        </form>
+    </div>
+</div>

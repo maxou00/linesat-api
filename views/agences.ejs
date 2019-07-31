@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Agences</title>
+		<link rel='stylesheet' href='/stylesheets/style.css' />
+		<link rel='stylesheet' href='/stylesheets/form.css' />
+		<link rel='stylesheet' href='/stylesheets/overlay.css' />
+	</head>
+	<body>
+		<div class="root">
+			<%-include header.ejs%>
+			<section class='main-body'>
+				<div class="scaffold">
+				    <div class="appbar">
+						<h1>Agences</h1>
+                        <div class='actions'>
+                            <button type="">Filtrer</button>
+                            <button onclick="prepareNewAgence()">Nouveau</button>
+                        </div>
+					</div>
+					<div class='appbody'>
+						<table class="table">
+						    <tr>
+                                <th colspan='3'>Identité</th>
+                                <th colspan='3'>Localisation</th>
+                                <th colspan='3'>Compte et Clients</th>
+                                <th rowspan="2">Actions</th>
+                            </tr>
+                            <tr>
+								<th>Réference</th>
+								<th>Désignation</th>
+                                <th>Activité</th>
+                                <th>Pays</th>
+                                <th>Ville</th>
+                                <th>Adresse Précise</th>
+                                <th>Compte</th>
+                                <th>Solde</th>
+                                <th>N.Clients</th>
+							</tr>
+                            <%agences.forEach(agence=>{%>
+                                <tr>
+                                    <td><%=agence.idagence%></td>
+                                    <td><%=agence.nom%></td>
+                                    <td><%=agence.activity=="ACTIVE"?'actif':agence.activity=='BLOCKED'?'bloqué':'fermé'%></td>
+                                    <td><%=agence.pays%></td>
+                                    <td><%=agence.ville%></td>
+                                    <td><%=agence.adresseprecise%></td>
+                                    <td><%=agence.idcompte%></td>
+                                    <td><%=agence.solde%></td>
+                                    <td><%=agence.clientcount%></td>
+                                    <td>
+                                        <%if(agence.activity=='ACTIVE'){%>
+                                        <a class='quick' href='/agences/close/<%=agence.idagence%>'>Fermer</button>
+                                        <%}else{%>
+                                        <a class='quick' href='/agences/activate/<%=agence.idagence%>'>Activer</button>
+                                        <%}%>
+                                    </td>
+                                </tr>
+                            <%})%>
+						</table>
+					</div>
+					<div class="appmessage"></div>
+                    <div class="overlay  overlay-hidden"></div>
+				</div> 
+			</section>
+		</div>
+        <script id='agence-form' type='text/html'>
+            <div class="overlay-content white">
+                <div class="appbar">
+                    <h1 class="title">Nouvelle Agence</h1>
+                    <div class="actions">
+                        <button class="close-overlay" onclick='overlay.destroy();'>Fermer</button>
+                    </div>
+                </div>
+                <div class="container white">
+                    <form  name="newBouquet" action="/agences/new" class="form" method='POST'>
+                        <div class="form-container full-width">
+                            <h3>Localisation</h3>
+                            <div class="form-content full-width _fc_center">
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Pays" name="pays" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Ville" name="ville" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Adresse précise" name="adresse" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-container full-width _fc_center">
+                            <h3>Informations</h3>
+                            <div class="form-content full-width _fc_center">
+                                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom de l'agence" name="nom" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Crédit initial" name="montant" required>
+                            </div> 
+                        </div>
+                        <div class="form-container full-width _fc_center">
+                            <h3>Acces Admin</h3>
+                            <div class="form-content full-width _fc_center">
+                                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom d'utilisateur" name="username" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Mot de passe" name="password" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Repetez le mot de passe" name="repeat" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="button raised coral form-confirm _iw90 ">Créer l'agence</button>
+                        <div class="form-content full-width _fc_center" id="form-message">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </script>
+		<script src="/javascripts/router.js"></script>
+        <script src="/javascripts/overlay.js"></script>
+		<script src="/javascripts/visibilities.js"></script>
+		<script src="/javascripts/handlers/agences.js"></script>
+	</body>
+</html>

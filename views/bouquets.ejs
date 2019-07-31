@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bouquets</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel='stylesheet' href='/stylesheets/form.css' />
+    <link rel='stylesheet' href='/stylesheets/overlay.css' />
+  </head>
+  <body>
+    <div class="root">
+        <%-include header.ejs%>
+        <section class="main-body">
+            <div class="scaffold">
+                <div class="appbar">
+                    <h1>Bouquets</h1>
+                    <%if(user.type=='SYSTEM'){%>
+                    <div class="actions">
+                        <button onclick='prepareNewBouquet()'>Nouveau</button>
+                    </div>
+                    <%}%>
+                </div>
+                <div class="appbody">
+                    <table>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Description</th>
+                            <th>Prix</th>
+                            <%if(user.type=='SYSTEM'){%>
+                            <th>Visibilité</th>
+                            <th>Actions</th>
+                            <%}%>
+                        </tr>
+                        <%bouquets.forEach(bouquet=>{%>
+                            <tr>
+                                <td><%=bouquet.nom%></td>
+                                <td><%=bouquet.description%></td>
+                                <td><%=bouquet.prix%>  /  mois</td>
+                                <%if(user.type=='SYSTEM'){%>
+                                <td><%=bouquet.visibility=='VISIBLE'?"visible":"inactif"%></td>
+                                <td>
+                                    <button class='quick' onclick='requireComponent("/bouquets/update/<%=bouquet.idbouquet%>");'>Modifier</button>
+                                    <% if(bouquet.visibility=='VISIBLE'){%>
+                                        <a class='quick' href='/bouquets/disable/<%=bouquet.idbouquet%>'>Désactiver</a>
+                                    <%}%>
+                                    <% if(bouquet.visibility=='HIDDEN'){%>
+                                        <a class='quick' href='/bouquets/enable/<%=bouquet.idbouquet%>'>Activer</a>
+                                    <%}%>
+                                </td>
+                                <%}%>
+                            <tr/>
+                        <%})%>
+                    </table>
+                </div>
+                <div class="appmessage"></div>
+                <div class="overlay  overlay-hidden">
+                </div>
+            </div>
+        </section>
+    </div>
+    <%if(user.type=='SYSTEM'){%>
+    <script id='bouquet-form' type='text/html'>
+        <div class="overlay-content white">
+            <div class="appbar">
+                <h1 class="title">Nouveau Bouquet</h1>
+            <div class="actions">
+                <button class="close-overlay" onclick='overlay.destroy();'>Fermer</button>
+            </div>
+        </div>
+            <div class="container white">
+                <form  name="newBouquet" action="" class="form">
+                    <div class="form-content full-width _fc_center">
+                        <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom du bouquet" name="nom" pattern="^(\w+)(-?)(\w+)$" required>
+                    </div>
+                    <div class="form-content full-width _fc_center">
+                        <input type="text" class="input outline white _iw90 _ip8px" placeholder="Description" name="description">
+                    </div>
+                    <div class="form-content full-width _fc_center">
+                        <input type="number" class="input outline white _iw90 _ip8px" placeholder="Prix" name="prix" required>
+                    </div>
+                    <button type="submit" class="button raised coral form-confirm">Ajouter ce bouquet</button>
+                    <div class="form-content full-width _fc_center" id="form-message">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </script>
+    <script src="/javascripts/visibilities.js"></script>
+    <script src="/javascripts/overlay.js"></script>
+    <script src="/javascripts/requirecomponent.js"></script>
+    <script src="/javascripts/handlers/bouquets.js"></script>
+    <%}%>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="stylesheets/login.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="root">
+            <div class="form-container">
+                <div class="descriptive">
+                    <h1>LineSat</h1>
+                    <h2>Espace d'administration</h2>
+                </div>
+                <form name="connexion" action="/login" method="post">
+                    <input type="text" name="username" placeholder="Nom d'utilisateur">
+                    <input type="password" name="password" placeholder="Mot de passe">
+                    <div class="form-controls">
+                        <button class="button raised-button coral">Se connecter</button>
+                        <button class="button outline-button">Mot de passe oublié ?</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script src="/javascripts/login.js"></script>
+    </body>
+</html>

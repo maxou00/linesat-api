@@ -1,0 +1,26 @@
+<header class="drawer">
+    <div class="drawer-header">
+        <h1>LineSat</h1>
+        <div>
+            <h3><%=user.nom%></h3>
+            <h5><%=user.pays+", "+user.ville%></h5>
+        </div>
+    </div>
+    <div class="drawer-body">
+        <nav class="menu">
+            <a href="/" class="nav-button">Accueil</a>
+            <%if(user.type=='SYSTEM'){%>
+                <div class="divider"></div>
+                <a href="/agences" class="nav-button">Agences</a>
+            <%}%>
+            <div class="divider"></div>
+            <a href="/bouquets" class="nav-button">Bouquets</a>
+            <div class="divider"></div>
+            <a href="/comptes" class="nav-button">Comptes Client</a>
+            <div class="divider"></div>
+            <a href="/reabos" class="nav-button">Réabonnements</a>
+            <div class="divider"></div>
+            <a href="/logout" class="nav-button">Déconnexion</a>
+        </nav>
+    </div>
+</header>

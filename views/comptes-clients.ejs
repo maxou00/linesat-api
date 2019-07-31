@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Agences</title>
+		<link rel='stylesheet' href='/stylesheets/style.css' />
+		<link rel='stylesheet' href='/stylesheets/form.css' />
+		<link rel='stylesheet' href='/stylesheets/overlay.css' />
+	</head>
+	<body>
+		<div class="root">
+			<%-include header.ejs%>
+			<section class='main-body'>
+				<div class="scaffold">
+				    <div class="appbar">
+						<h1>Comptes  Client</h1>
+                        <div class='actions'>
+                        <%if(comptes.length>0){%>
+                            <button type="">Filtrer</button>
+                        <%}%>
+                        <%if(user.type=='SYSTEM'){%>
+                            <button type="" onclick='prepareNewCompte();'>Nouveau client</button>
+                        <%}%>
+                        </div>
+					</div>
+					<div class='appbody'>
+                        <%if(comptes.length>0){%>
+						<table class="table">
+						    <tr>
+                                <th colspan='2'>Agence</th>
+                                <th colspan='4'>Client</th>
+                                <th colspan='3'>Etat du Compte</th>
+                                <th rowspan='2'>Actions</th>
+                            </tr>
+                            <tr>
+								<th>Reference</th>
+								<th>Désignation</th>
+                                <th>Reference</th>
+                                <th>Nom</th>
+                                <th>Prenom</th>
+                                <th>Sexe</th>
+                                <th>Reference</th>
+                                <th>Solde</th>
+                                <th>Statut</th>
+							</tr>
+                            <%comptes.forEach(compte=>{%>
+                                <tr>
+                                    <td><%=compte.idAgence%></td>
+                                    <td><%=compte.nomAgence%></td>
+                                    <td><%=compte.idClient%></td>
+                                    <td><%=compte.nomClient%></td>
+                                    <td><%=compte.prenomClient%></td>
+                                    <td><%=compte.sexeClient%></td>
+                                    <td><%=compte.idCompte%></td>
+                                    <td><%=compte.solde%></td>
+                                    <td><%=compte.status%></td>
+                                    <td>
+                                        <a href="/comptes/close/<%=compte.idCompte%>" class="quick">Fermer ce compte</a>
+                                    </td>
+                                </tr>
+                            <%})%>
+                        </table>
+                        <%}else{%>
+                        <div class="flex row full-width full-height _fc_center">
+                            <p>Vous n'avez aucun client</p>
+                        </div>
+                        <%}%>
+					</div>
+					<div class="appmessage"></div>
+				</div>
+			</section>
+            <div class="overlay overlay-hidden"></div>
+		</div>
+        <script id='compteclient-form' type='text/html'>
+            <div class="overlay-content white">
+                <div class="appbar">
+                    <h3 class="title">Nouveau Client</h3>
+                    <div class="actions">
+                        <button class="close-overlay" onclick='overlay.destroy();'>Fermer</button>
+                    </div>
+                </div>
+                <div class="container white">
+                    <form  name="newBouquet" action="/comptes/newclient" class="form" method='POST'>
+                        <div class="form-container full-width">
+                            <h3>Identité</h3>
+                            <div class="form-content full-width _fc_center">
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom" name="nom" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <input type="text" class="input outline white _iw90 _ip8px" placeholder="Prénom" name="prenom" required>
+                                </div>
+                                <div class="form-content full-width _fc_center">
+                                    <select name="sexe" class="input outline white _iw90 _ip8px">
+                                        <option value="HOMME">Homme</option>
+                                        <option value="FEMME">Femme</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-container full-width _fc_center">
+                            <h3>Information de connexion</h3>
+                            <div class="form-content full-width _fc_center">
+                                <input type="text" class="input outline white _iw90 _ip8px" placeholder="Nom d'utilisateur" name="username" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Mot de passe" name="password" required>
+                            </div>
+                            <div class="form-content full-width _fc_center">
+                                <input type="password" class="input outline white _iw90 _ip8px" placeholder="Repetez le mot de passe" name="repeat" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="button raised coral form-confirm _iw90 ">Inscrire ce client</button>
+                            <div class="form-content full-width _fc_center" id="form-message">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </script>
+		<script src="/javascripts/overlay.js"></script>
+		<script src="/javascripts/visibilities.js"></script>
+		<script src="/javascripts/handlers/comptes.js"></script>
+	</body>
+</html>

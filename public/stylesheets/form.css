@@ -1,0 +1,141 @@
+.form-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.form{
+    display: flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content: space-around;
+    margin: 5px;
+    --wmin:250px;
+    --hmin:45px;
+    min-width: 350px;
+}
+
+.full-width{
+    width: 100%;
+}
+
+.full-height{
+    height: 100%;
+}
+
+/* _iw90 == input field occupying 90% of its parent's width*/
+._iw90{
+    width: 90%;
+}
+
+/* input field with horizontal 8px padding */
+._ip8px{
+    padding: 0px 8px;
+}
+
+
+.flex{
+    display: flex;
+}
+
+.row{
+    flex-direction: row;
+}
+
+.column{
+    flex-direction: column;
+}
+
+.form-content{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/*fc_center == form-content with centered items */
+._fc_center{
+    align-items: center;
+    justify-content:center;
+}
+
+.input{
+    margin: 8px;
+    border:none;
+    height: var(--hmin);
+}
+
+.button:disabled{
+    background-color: grey;
+}
+
+.w-input{
+    width: var(--wmin);
+    height:var(--hmin);
+}
+
+.w-big{
+    width: calc( var(--wmin) * 2);
+    height:var(--hmin);
+}
+
+.bigger{
+    transform: scale(1.2);
+}
+
+.button{
+    margin: 8px;
+    border: none;
+    width: 250px;
+    height: 45px;
+}
+
+.round{
+    border-radius: 8px;
+}
+
+.dark{
+    background-color: rgba(19,19,19,.7);
+    color: white;
+}
+
+.coral{
+    background-color:coral;
+    color: white;
+}
+
+.white{
+    background-color: rgba(255,255,255,.7);
+    color:black;
+}
+
+.transparent{
+    background-color: transparent;
+}
+
+.blurred{
+    filter: blur(8px);
+    -webkit-filter: blur(8px);
+}
+
+.outline{
+    border: 1px solid rgba(0,0,0,.4);
+}
+
+.raised{
+    transition: all 300ms linear;
+    box-shadow: 1px 1px 6px  rgba(180, 179, 179, 0.7);
+}
+
+.raised:hover{
+    box-shadow: 4px 4px 12px  rgba(180, 179, 179, 0.7),
+                -4px -4px 12px rgba(180, 179, 179, .7);
+}
+
+@media (max-width:750px){
+    .w-big{
+        width:var(--wmin);
+        height:var(--hmin);
+    }
+}
