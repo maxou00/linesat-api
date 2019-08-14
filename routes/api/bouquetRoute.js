@@ -1,11 +1,11 @@
 var router=require('express').Router();
-var bManager=require('../../db/bouquetsManager');
-var loginManager=require('../../db/loginManager');
+var bManager=require('../../db/bouquetsManager')();
+var loginManager=require('../../db/loginManager')();
 let userType=require('../../db/constants').UserType;
 
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
-    if(req.mobileActive || req.session.userType===userType.AGENCY || req.session.userType===userType.SYSTEM){
+    if(req.user){
         next();
     }else{
         resp.status(403).json({success:false,message:"You're not logged in."});
@@ -13,7 +13,7 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 })
 
 router.get('/',(req,res)=>{
-    bManager().readAll(req.dbSession)
+    bManager.readAll(req.dbSession)
     .then((result) => {
         res.json({
             success:true,
@@ -32,8 +32,9 @@ router.get('/',(req,res)=>{
 
 router.put('/',(req,resp)=>{
 
-    if(req.session.uid && req.session.userType===userType.SYSTEM){ /// TODO: check if the user has sufficient right to create a bouquet
-        bManager().create(req.dbSession,req.body)
+    if(req.user.uid && req.user.type===userType.SYSTEM){ 
+        /// TODO: check if the user has sufficient rights to create a bouquet
+        bManager.create(req.dbSession,req.body)
         .then((result) => {
             console.log(result);
             resp.status(200).json({
@@ -54,8 +55,8 @@ router.put('/',(req,resp)=>{
 
 router.patch('/:id',(req,resp)=>{
     console.log(req.params.id);
-    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM){
-        bManager().patch(req.dbSession,req.params.id,req.body)
+    if(req.params.id && req.user.uid && req.user.type===userType.SYSTEM){
+        bManager.patch(req.dbSession,req.params.id,req.body)
         .then(()=>{
             resp.json({success:true});
         })
@@ -69,10 +70,10 @@ router.patch('/:id',(req,resp)=>{
 router.options('/:id',(req,resp)=>{
     console.log(req.body);
 
-    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM && req.body.option){
+    if(req.params.id && req.user.uid && req.user.type===userType.SYSTEM && req.body.option){
         let opt=req.body.option;
         if(opt==='lock'){
-            bManager().lock(req.dbSession,req.params.id)
+            bManager.lock(req.dbSession,req.params.id)
             .then(()=>{
                 resp.json({success:true});
             })
@@ -81,7 +82,7 @@ router.options('/:id',(req,resp)=>{
                 resp.status(403).json({success:false});
             })
         }else if(opt==='activate'){
-            bManager().activate(req.dbSession,req.params.id)
+            bManager.activate(req.dbSession,req.params.id)
             .then(()=>{
                 resp.json({success:true});
             })
@@ -96,9 +97,8 @@ router.options('/:id',(req,resp)=>{
 })
 
 router.delete('/:id',(req,resp)=>{
-    console.log(req.params.id && req.session.sysAdminID);
-    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM){
-        bManager().delete(req.dbSession,req.params.id)
+    if(req.params.id && req.user.uid && req.session.userType===userType.SYSTEM){
+        bManager.delete(req.dbSession,req.params.id)
         .then(()=>{
             resp.json({success:true});
         })

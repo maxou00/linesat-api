@@ -11,8 +11,7 @@ let jwt = require('jsonwebtoken');
 const PRIVATE_KEY="com.linetechnologie.linesat.api.there_Is-a-pie@2019-InTheSky";
 const ISSUER="com.linetechnologie.linesat.api.authservice";
 
-router.post('/sys/login',(req,resp)=>{
-    console.log(req.session);
+router.post('/sys',(req,resp)=>{
     loginManager.authSysAdmin(req.dbSession,req.body)
     .then((user) => {
         let data={
@@ -27,12 +26,13 @@ router.post('/sys/login',(req,resp)=>{
         })
     })
     .catch((err) => {
+        if(err) console.log(err);
         resp.status(403).json({success:false,});
     })
 })
 
-router.post('/agency/login',(req,resp)=>{
-    loginManager().authAgencyUser(req.dbSession,req.body)
+router.post('/agency',(req,resp)=>{
+    loginManager.authAgencyUser(req.dbSession,req.body)
     .then((result) => {
         let data={
             uid:result.user._id,
@@ -51,10 +51,10 @@ router.post('/agency/login',(req,resp)=>{
     });
 })
 
-router.post('/customer/login',(req,resp)=>{
+router.post('/customer',(req,resp)=>{
     if(req){
         console.log(req.body);
-        loginManager().authCustomer(req.dbSession,req.body)
+        loginManager.authCustomer(req.dbSession,req.body)
         .then((cust)=>{
             let data={
                 uid:cust._id,

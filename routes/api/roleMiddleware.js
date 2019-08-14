@@ -10,7 +10,8 @@ const agencyUserManager = require ('../../db/agencyUserManager')();
 */
 
 function handleRole(req,res,next){
-    if(req.session.agencyID){
+    next();
+    /*if(req.session.agencyID){
         agencyUserManager.readUserByRef(req.dbSession,req.session.uid)
         .then((user)=>{
             req.user_roles=user.roles;
@@ -21,7 +22,7 @@ function handleRole(req,res,next){
         })
     }else{
         next();
-    }
+    }*/
 }
 
 

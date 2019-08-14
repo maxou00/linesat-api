@@ -11,6 +11,7 @@ redisClient.on('error',(err)=>{
   console.log(err);
 });
 
+var authHandler= require('./routes/authenticationMw');
 var api=require('./api');
 var app = express();
 var server = require('http').createServer(app);
@@ -23,7 +24,8 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-//app.use('/', indexRouter);
+
+app.use(authHandler); /// Handling token based authentication
 app.use('/api',api);
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -122,9 +124,8 @@ var namespace= io.on("connection",(socket)=>{
   })
 
 })
-
+*/
 module.exports = {
   app:app,
   server:server
 };
-*/
