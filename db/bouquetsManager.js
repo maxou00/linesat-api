@@ -8,20 +8,22 @@ function BouquetsManagerBuilder(){
     return {
         create(session,obj={}){
             return new Promise((resolve,reject)=>{
-                let bouquetDoc={
-                    label:obj.label,
-                    description:obj.description,
-                    pricing:{
-                        price:obj.price,
-                        timeUnit:"MONTH",
-                        currency:"XOF",
-                    },
-                    creationDate:Date.now(),
-                    state:BOUQUET_STATE_ACTIVE // active || locked 
-                };
-    
                 if(obj.label && obj.price){
                     //obj.nom=obj.nom.toUpperCase();
+                    if(typeof obj.price === "string"){
+                        obj.price=Number.parseInt(obj.price);
+                    }
+                    let bouquetDoc={
+                        label:obj.label,
+                        description:obj.description,
+                        pricing:{
+                            price:obj.price,
+                            timeUnit:"MONTH",
+                            currency:"XOF",
+                        },
+                        creationDate:Date.now(),
+                        state:BOUQUET_STATE_ACTIVE // active || locked 
+                    };
                     let bouquets=session.getSchema(connection.database).getCollection("bouquets");
                     bouquets.add(bouquetDoc).execute()
                     .then((res)=>{

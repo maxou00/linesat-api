@@ -1,43 +1,73 @@
 const connection = require('./connection').config;
 const crypto=require('crypto');
 
+const accountManager= require('./comptesManager')();
 const HASH_ALGORITHM="SHA1"
+
 function AgencyManagerBuilder(){
     return {
         create(session,obj={}){
             return new Promise((resolve,reject)=>{
-                let agencyDoc={
-                    identity:{
-                        name:obj.name
-                    },
-                    location:{
-                        city:obj.city || '',
-                        country:obj.country || '',
-                        street:obj.street||'',
-                        geo:{}
-                    },
-                    contact:{
-                        email:obj.email || '',
-                        phone:obj.phone || ''
-                    },
-                    creationDate:Date.now()
+                let valid=true;
+
+                /// !!!! NEXT VALIDATION LEVEL !!!! <<<TEST USER DETAILS AGAINST EXPRESSIONS>>>
+
+                /// Validate Localisation informations
+                if( !obj.country || !obj.city ){
+                    valid=false;
+                    reject("Invalid position informations");
                 }
-    
-                if(true){
-                //if(obj.country && obj.city && obj.name && obj.street && obj.initialAmount){
-    
+                ///Validate identity informations
+                if( !obj.name){
+                    valid=false;
+                    reject("Invalid Identity informations");
+                }
+                ///Validate contact . Email AND phone number are required
+                if( !obj.email || !obj.phone ){
+                    valid=false;
+                    reject("Invalid Contact informations");
+                }
+                ///Validate admin account details
+                if( !obj.userFirstName || !obj.userLastName || !obj.userGender || !obj.username || !obj.password){
+                    valid=false;
+                    reject("Invalid Administrator informations");
+                }
+                /// Validate financial details 
+                if(!obj.initialAmount){
+                    valid=false;
+                    reject("Invalid Financial informations");
+                }
+
+                if(valid){
+                    let agencyDoc={
+                        identity:{
+                            name:obj.name
+                        },
+                        location:{
+                            city:obj.city || '',
+                            country:obj.country || '',
+                            street:obj.street||'',
+                            geo:{}
+                        },
+                        contact:{
+                            email:obj.email || '',
+                            phone:obj.phone || ''
+                        },
+                        creationDate:Date.now()
+                    }
+                    
                     let schema=session.getSchema(connection.database);
                     session.startTransaction();
                     ///STEP 1: Insert Agency and wait for generated id
                     let agencies=schema.getCollection("agencies");
+                    let genId='';
+                    let genAAId=''; /// Generated Agency Account ID
                     agencies.add(agencyDoc).execute()
                     .then((rs1)=>{
                         console.log(rs1);
                         /// STEP 2: Retrieve generated id
-                        let genIds=rs1.getGeneratedIds();
-                        if(genIds && genIds[0]){
-                            // continue
-                            console.log(1);
+                        genId=rs1.getGeneratedIds()[0];
+                        if(genId){
                             let agencyAdminDoc={
                                 owner:{
                                     name:{
@@ -46,7 +76,7 @@ function AgencyManagerBuilder(){
                                     },
                                     gender:obj.userGender,
                                 },
-                                agency:genIds[0],
+                                agency:genId,
                                 credentials:{
                                     username:obj.username,
                                     passwordHash:crypto.createHash(HASH_ALGORITHM).update(obj.password).digest('hex')
@@ -56,54 +86,53 @@ function AgencyManagerBuilder(){
                                 },
                                 creationDate:Date.now()
                             }
-                                /// STEP 3: Create role 
+                            /// STEP 3: Create agencyAdmin
                             let agencyUsers=schema.getCollection("agencyUsers");
-                            agencyUsers.add(agencyAdminDoc).execute()
-                            .then((rs2)=>{
-                                if(rs2){
-                                    console.log(2);
-                                    //continue 
-                                    let agencyAccountDoc={
-                                        type:"BUSINESS",
-                                        amount:obj.initialAmount,
-                                        agency:genIds[0],
-                                        creationDate:Date.now()
-                                    }
-                                    ///STEP 4: Create business account
-                                    schema.getCollection("accounts").add(agencyAccountDoc).execute()
-                                    .then((rs3)=>{
-                                        if(rs3){
-                                            // OK DONE ! 
-                                            /// LAST: finish session
-                                            console.log(3);
-                                            session.commit()
-                                            .then(()=>{
-                                                resolve({id:genIds[0]});
-                                            })    
-                                        }
-                                       /* session.rollback();
-                                        session.done();
-                                        reject();*/
-                                    })
-                                    .catch((err)=>{
-                                        /*session.rollback();
-                                        session.done();
-                                        reject(err);*/
-                                    })
-                                }
-                            })
-                            .catch((err)=>{
-                               /* session.rollback();
-                                session.done();
-                                reject(err);*/
-                            })
+                            return agencyUsers.add(agencyAdminDoc).execute();
                         }
-                        /* session.rollback();
-                        session.done();
-                        console.log(rs1.getGeneratedIds());*/
+                    })
+                    .then((rs2)=>{
+                        if(rs2){
+                            return accountManager.createAgencyAccount(session,genId);
+                        }
+                        else{
+                            throw new Error("the agency admin was not created");
+                        }
+                    })
+                    .then((gid)=>{
+                        if(gid){
+                            genAAId=gid;
+                            if(genAAId){
+                                // Good. Agency Account has been created. 
+                                //Let's transact the initial Amount from the root account to the newly created account
+                                return accountManager.readRootAccountDetails(session);
+                            }
+                        }else{
+                            throw new Error("the agency account was not created");
+                        }
+                    })
+                    .then((rootAccount)=>{
+                        if(rootAccount){
+                            let reason = `Injecting ${obj.initialAmount} into agency account ${genAAId} as Initial Amount.`;
+                            return accountManager.transact(session,{from:rootAccount._id,to:genAAId,amount:obj.initialAmount,reason:reason})
+                        }
+                    })
+                    .then(val=>{
+                        return session.commit()
+                    })
+                    .then(val=>{
+                        return session.done();
+                    })
+                    .then((val)=>{
+                        resolve(genId);
+                    })
+                    .catch(err=>{
+                        ///ABORT THE PROCESS
+                        session.rollback();
+                        reject(err);
                     })
                 }else{
-                    reject("Le nom et le prix sont necessaires");
+                    reject('Invalid Request');
                 }
             })
         },
@@ -123,6 +152,9 @@ function AgencyManagerBuilder(){
 
         readByRef(session,ref=''){
             return new Promise((resolve,reject)=>{
+                if(!ref){
+                    reject("The reference was not given");
+                }
                 let schema = session.getSchema(connection.database);
                     let agencies = schema.getCollection("agencies");
                     let agency=null;

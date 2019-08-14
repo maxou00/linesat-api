@@ -6,6 +6,48 @@ const uuidv4=require('uuid/v4');
 function ComptesManagerBuilder(){
     
     return {
+        /**
+         * 
+         * @param {Mysqlx.session} session 
+         * @param {{}} param1 
+         * @param {boolean} abortIfExist 
+         * 
+         * Create a new account for the given agency ID 
+         */
+        createAgencyAccount(session,agencyRef='',abortIfExist=true){
+            return new Promise((resolve,reject)=>{
+                
+                let agencyAccountDoc={
+                    type:"BUSINESS",
+                    amount:0,
+                    agency:agency,
+                    creationDate:Date.now()
+                }
+
+                let schema= session.getSchema(connection.database);
+                let accounts= schema.getCollection("accounts");
+                let defined=null;
+                if(abortIfExist){
+                    accounts.find("agency=:ag AND type='BUSINESS'")
+                    .execute(r=>{
+                        defined=r;
+                    })
+                    .then(rs=>{
+                        if(defined){
+                            reject("The given agency already have an account");
+                        }
+                    })
+                }
+                accounts.add(agencyAccountDoc).execute()
+                .then(rs=>{
+                    let ids=rs.getGeneratedIds();
+                    if(ids){
+                        resolve(ids[0]);
+                    }
+                })
+            })
+        },
+
         createCustomerAccount(session,agency='',{customerCode='',amount=1}){
             return new Promise((resolve,reject)=>{
                 ///Define doc
@@ -149,7 +191,7 @@ function ComptesManagerBuilder(){
         },
 
         transact(session,{from='',to='',amount=0,reason=''}){
-            console.log(`Starting transfert of ${amount} XOF from ${from} to ${to} at ${Date.now().toString()}`);
+            console.log(`Starting transfert of ${amount} from ${from} to ${to} at ${Date.now().toString()}`);
             return new Promise((resolve,reject)=>{
                 // Amount have to be positive number
                 if(amount<=0){
@@ -274,6 +316,26 @@ function ComptesManagerBuilder(){
                 })
                 .then((rs)=>{
                     resolve(docs);
+                })
+            })
+        },
+
+        readRootAccountDetails(session){
+            return new Promise((resolve,reject)=>{
+                let doc=null;
+                session
+                .getSchema(connection.database)
+                .getCollection("accounts")
+                .find("type='ROOT' AND standalone=true")
+                .execute((row)=>{
+                    doc=row;
+                })
+                .then((rs)=>{
+                    if(doc){
+                        resolve(doc);
+                    }else{
+                        reject();
+                    } 
                 })
             })
         },

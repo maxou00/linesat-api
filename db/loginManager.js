@@ -7,6 +7,9 @@ function LoginManagerBuilder(){
     return {
         authCustomer(session,{emailOrPhone,password}){
             return new Promise((resolve,reject)=>{
+                if(!emailOrPhone || !password){
+                    reject("Identifiant invalide");
+                }
                 let pass = crypto.createHash(HASH_ALGORITHM).update(password).digest('hex');
                 let customer = null;
                 let customers = session.getSchema(connection.database).getCollection("customers");
@@ -31,7 +34,12 @@ function LoginManagerBuilder(){
 
         authSysAdmin(session,{username,password}){
             return new Promise((resolve,reject)=>{
+                if(!username || !password){
+                    reject("Invalid credentials");
+                }
+
                 let item = null;
+                
                 password=crypto.createHash(HASH_ALGORITHM).update(password).digest('hex');
                 let sys=session.getSchema(connection.database).getCollection("sysadmins");
                 sys.find("credentials.username=:usrn  AND credentials.passwordHash=:pass")
@@ -53,6 +61,10 @@ function LoginManagerBuilder(){
 
         authAgencyUser(session,{username,password}){
             return new Promise((resolve,reject)=>{
+                if(!username || !password){
+                    reject();
+                }
+                
                 let hash=crypto.createHash(HASH_ALGORITHM).update(password).digest('hex');
                 let schema= session.getSchema(connection.database);
                 let agencyUsers=schema.getCollection("agencyUsers");

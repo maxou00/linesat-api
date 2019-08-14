@@ -5,10 +5,7 @@ let userType=require('../../db/constants').UserType;
 
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
-    console.log('Bouquets Zone middleware');
-    console.log(req.session);
     if(req.mobileActive || req.session.userType===userType.AGENCY || req.session.userType===userType.SYSTEM){
-        console.log('unlocking...');
         next();
     }else{
         resp.status(403).json({success:false,message:"You're not logged in."});
@@ -69,31 +66,32 @@ router.patch('/:id',(req,resp)=>{
     }
 })
 
-router.options('/:id/lock',(req,resp)=>{
-    console.log(req.params.id && req.session.sysadminID);
-    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM){
-        bManager().lock(req.dbSession,req.params.id)
-        .then(()=>{
-            resp.json({success:true});
-        })
-        .catch((err)=>{
-            console.log(err);
-            resp.status(403).json({success:false});
-        })
-    }
-})
+router.options('/:id',(req,resp)=>{
+    console.log(req.body);
 
-router.options('/:id/activate',(req,resp)=>{
-    console.log(req.params.id && req.session.sysadminID);
-    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM){
-        bManager().activate(req.dbSession,req.req.params.id)
-        .then(()=>{
-            resp.json({success:true});
-        })
-        .catch((err)=>{
-            console.log(err);
+    if(req.params.id && req.session.uid && req.session.userType===userType.SYSTEM && req.body.option){
+        let opt=req.body.option;
+        if(opt==='lock'){
+            bManager().lock(req.dbSession,req.params.id)
+            .then(()=>{
+                resp.json({success:true});
+            })
+            .catch((err)=>{
+                console.log(err);
+                resp.status(403).json({success:false});
+            })
+        }else if(opt==='activate'){
+            bManager().activate(req.dbSession,req.params.id)
+            .then(()=>{
+                resp.json({success:true});
+            })
+            .catch((err)=>{
+                console.log(err);
+                resp.status(403).json({success:false});
+            })
+        }else{
             resp.status(403).json({success:false});
-        })
+        }
     }
 })
 
