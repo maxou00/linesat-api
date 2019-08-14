@@ -1,5 +1,5 @@
 const jwt=require('jsonwebtoken');
-
+const enums = require('../db/constants');
 const TOKEN_HEADER="x-access-token";
 
 /**
@@ -15,6 +15,15 @@ function  handleToken(req,resp,next){
         let decoded=jwt.verify(token,PRIVATE_KEY);
         if(decoded){
             req.user=decoded;
+            if(decoded.type===enums.UserType.AGENCY){
+                req.isAgency=true;
+            }
+            else if(decoded.type===enums.UserType.CUSTOMER){
+                req.isCustomer=true;
+            }
+            else if(decoded.type===enums.UserType.SYSTEM){
+                req.isSystem=true;
+            }
         }
     }
     next();

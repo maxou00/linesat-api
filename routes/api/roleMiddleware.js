@@ -1,5 +1,5 @@
 const agencyUserManager = require ('../../db/agencyUserManager')();
-
+const users= require('../../db/constants').UserType;
 /**
 * This middleware is intented to be used for administration role.
 * By the way, this mw will be able to read the request and inject a [role] attribute for the given user
@@ -11,10 +11,10 @@ const agencyUserManager = require ('../../db/agencyUserManager')();
 
 function handleRole(req,res,next){
     next();
-    /*if(req.session.agencyID){
-        agencyUserManager.readUserByRef(req.dbSession,req.session.uid)
+    if(req.user.uid && (req.user.type===users.AGENCY || req.user.type===users.SYSTEM )){
+        agencyUserManager.readUserByRef(req.dbSession,req.user.uid)
         .then((user)=>{
-            req.user_roles=user.roles;
+            req.roles=user.roles;
             next();
         })
         .catch(err=>{
@@ -22,8 +22,7 @@ function handleRole(req,res,next){
         })
     }else{
         next();
-    }*/
+    }
 }
-
 
 module.exports=handleRole;

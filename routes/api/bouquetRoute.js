@@ -3,7 +3,6 @@ var bManager=require('../../db/bouquetsManager')();
 var loginManager=require('../../db/loginManager')();
 let userType=require('../../db/constants').UserType;
 
-
 router.all(/^\/(.*)/, (req,resp,next)=>{
     if(req.user){
         next();
@@ -32,7 +31,7 @@ router.get('/',(req,res)=>{
 
 router.put('/',(req,resp)=>{
 
-    if(req.user.uid && req.user.type===userType.SYSTEM){ 
+    if(req.isSystem){ 
         /// TODO: check if the user has sufficient rights to create a bouquet
         bManager.create(req.dbSession,req.body)
         .then((result) => {
@@ -55,7 +54,7 @@ router.put('/',(req,resp)=>{
 
 router.patch('/:id',(req,resp)=>{
     console.log(req.params.id);
-    if(req.params.id && req.user.uid && req.user.type===userType.SYSTEM){
+    if(req.params.id && req.isSystem){
         bManager.patch(req.dbSession,req.params.id,req.body)
         .then(()=>{
             resp.json({success:true});
@@ -70,7 +69,7 @@ router.patch('/:id',(req,resp)=>{
 router.options('/:id',(req,resp)=>{
     console.log(req.body);
 
-    if(req.params.id && req.user.uid && req.user.type===userType.SYSTEM && req.body.option){
+    if(req.params.id && req.isSystem && req.body.option){
         let opt=req.body.option;
         if(opt==='lock'){
             bManager.lock(req.dbSession,req.params.id)
@@ -97,7 +96,7 @@ router.options('/:id',(req,resp)=>{
 })
 
 router.delete('/:id',(req,resp)=>{
-    if(req.params.id && req.user.uid && req.session.userType===userType.SYSTEM){
+    if(req.params.id && req.isSystem){
         bManager.delete(req.dbSession,req.params.id)
         .then(()=>{
             resp.json({success:true});

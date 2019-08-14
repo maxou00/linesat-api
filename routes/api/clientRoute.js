@@ -1,21 +1,10 @@
-var clientManager=require('../../db/clientsManager');
+var clientManager=require('../../db/clientsManager')();
 var router=require('express').Router();
 var enums=require('../../db/constants');
-router.all(/^(.*)$/,(req,resp,next)=>{
-    if(req.mobileActive || req.session.uid){
-        next();
-    }else{  
-        resp.status(403).json({
-            success:false,
-            message:'You are not logged in.'
-        })
-        req.dbSession.close();
-    }
-})
 
 router.get('/',(req,res)=>{
-    if(req.mobileActive && req.mobileSession.data.uid){
-        clientManager().readByRef(req.dbSession,req.mobileSession.data.uid)
+    if(req.isCustomer){
+        clientManager.readByRef(req.dbSession,req.user.uid)
         .then((customer)=>{
             res.json({success:true,result:customer});
         })
@@ -23,8 +12,8 @@ router.get('/',(req,res)=>{
             console.log(err);
             res.status(500).json({sucess:false});
         })
-    }else if(req.session.userType==enums.UserType.SYSTEM){
-        clientManager().readAll(req.dbSession)
+    }else if(req.isSystem){
+        clientManager.readAll(req.dbSession)
         .then((result) => {
             res.json({
                 success:true,
@@ -46,8 +35,15 @@ router.get('/',(req,res)=>{
 })
 
 router.put('/',(req,res)=>{
-    console.log(req.body);
-    clientManager().create(req.dbSession,req.body)
+
+    if(!(req.isCustomer)){
+        res.json({
+            success:false,
+            message:"You are not an agency."
+        });
+        return;
+    }
+    clientManager.create(req.dbSession,req.body)
         .then((result) => {
             res.json(
                 {
@@ -66,8 +62,8 @@ router.put('/',(req,res)=>{
 
 router.patch('/',(req,res)=>{
     console.log(req.body);
-    if(req.mobileActive && req.mobileSession.data.uid){
-        clientManager().patch(req.dbSession,req.mobileSession.data.uid,req.body)
+    if(req.isCustomer){
+        clientManager.patch(req.dbSession,req.user.uid,req.body)
         .then((rs)=>{
             res.json(
                 {

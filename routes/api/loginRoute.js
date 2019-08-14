@@ -36,6 +36,7 @@ router.post('/agency',(req,resp)=>{
     .then((result) => {
         let data={
             uid:result.user._id,
+            agency:result.agency._id,
             type:userType.AGENCY
         }
         token = jwt.sign(data,PRIVATE_KEY);

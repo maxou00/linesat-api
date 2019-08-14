@@ -5,7 +5,7 @@ var accountManager=require('../../db/comptesManager')();
 var router=express.Router();
 
 router.all((req,resp,next)=>{
-    if(req.mobileActive || req.session.agencyID || req.session.sysAdminID){
+    if(req.user){
         next();
     }else{
         resp.status(403).json({success:false});
@@ -14,11 +14,11 @@ router.all((req,resp,next)=>{
 
 router.get('/account/:id',(req,res)=>{
 
-    if(req.mobileActive && req.mobileSession.data.uid){
+    if(req.isCustomer){
         accountManager.checkIfAccountIsOwnedByCustomer(
             req.dbSession,
             req.params.id,
-            req.mobileSession.data.uid
+            req.user.uid
         )
         .then((bool)=>{
             if(bool)
@@ -47,27 +47,6 @@ router.get('/account/:id',(req,res)=>{
         req.status(403).json({success:false});
     }
     
-})
-
-router.post('/',(req,res)=>{
-    let body= req.body;
-    console.log(req.query);
-    switch(body.action){
-        case "STORE":{
-            clientManager.create(body.content)
-            .then((result) => {
-                console.log(result);
-            }).catch((err) => {
-                console.log(err);
-            });
-            break;
-        }
-        case "UPDATE":{
-            clientManager.update(body.reference,body.content);
-            break;
-        }
-    }
-    res.send("Received POST Call");
 })
 
 module.exports=router;

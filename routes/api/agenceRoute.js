@@ -1,15 +1,14 @@
 var express=require('express');
-var agenceManager=require('../../db/agencesManager');
-var userManager=require('../../db/agencyUserManager');
-var loginManager=require('../../db/loginManager');
+var agenceManager=require('../../db/agencesManager')();
+var userManager=require('../../db/agencyUserManager')();
+var loginManager=require('../../db/loginManager')();
 
 var constants = require('../../db/constants');
 
 var router=express.Router();
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
-    if(req.session.userType===constants.UserType.SYSTEM){
-        console.log("Unlocking access to agencies ");
+    if(req.isSystem || req.isAgency){
         next();
     }else{
         resp.status(403).json({success:false,message:'Unauthorized access'})
@@ -17,7 +16,6 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 })
 
 router.get('/',(req,res)=>{
-    console.log(req.session);
     agenceManager().readAll(req.dbSession)
     .then((result) => {
         res.json({
@@ -35,12 +33,10 @@ router.get('/',(req,res)=>{
 })
 
 router.get('/users',(req,resp)=>{
-    if(req.session.agencyID && req.session.uid){
-        let manager = userManager();
-
+    if(req.isAgency){
         /// We check if the current Agency User have sufficient privileges to see the users list.
-        if(req.user_roles.grants.includes(permissions.perm_lvl_three)){
-            manager.readUsersByAgency(req.dbSession,req.session.agencyID)
+        if(req.roles.grants.includes(permissions.perm_lvl_three)){
+            userManager.readUsersByAgency(req.dbSession,req.user.agency)
             .then((result) => {
                 resp.json({
                     success:true,
@@ -63,7 +59,7 @@ router.get('/users',(req,resp)=>{
 })
 
 router.put('/',(req,res)=>{
-    agenceManager().create(req.dbSession,{user:req.body,agency:req.session.agencyID})
+    agenceManager.create(req.dbSession,{user:req.body,agency:req.user.agency})
     .then((result) => {
         res.json({
             success:true,
@@ -77,8 +73,8 @@ router.put('/',(req,res)=>{
 router.put('/users',(req,resp)=>{
     let manager = userManager();
     /// We check if the current Agency User have sufficient privileges to see the users list.
-    if(req.session.agencyID && req.session.uid && req.user_roles.grants.includes(permissions.perm_lvl_three)){
-        manager.createUser(req.dbSession,{user:req.body,agency:req.session.agencyID})
+    if(req.isAgency && req.roles.grants.includes(permissions.perm_lvl_three)){
+        manager.createUser(req.dbSession,{user:req.body,agency:req.user.agency})
         .then((result) => {
             resp.json({
                 success:true,

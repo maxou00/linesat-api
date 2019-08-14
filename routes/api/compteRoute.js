@@ -1,14 +1,18 @@
 var express=require('express');
-var compteManager=require('../../db/comptesManager');
-var clientManager = require('../../db/clientsManager');
-var loginManager=require('../../db/loginManager');
+var compteManager=require('../../db/comptesManager')();
+var clientManager = require('../../db/clientsManager')();
+var loginManager=require('../../db/loginManager')();
 var agencyManager=require('../../db/agencesManager')();
+
+
+var constants= require("../../db/constants");
+
 var crypto=require('crypto');
 var router=express.Router();
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
 
-  if( req.mobileActive || req.session.agencyID || req.session.sysAdminID ){
+  if( req.user){
     next();
   }else{
     resp.status(403).json({success:false,message:"You're not logged in."});
@@ -17,8 +21,8 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 
 router.get('/',(req,res)=>{
   // Send back to customer its  accounts he created in agencies
-  if(req.mobileActive && req.mobileSession.data.uid){
-    let id= req.mobileSession.data.uid;
+  if(req.isCustomer){
+    let id= req.user.uid;
     let accounts=[]; // Save retrieved accounts;
     let agencies=[]; // Save agencies ID 
     /// READ CUSTOMER's Accounts
@@ -49,9 +53,9 @@ router.get('/',(req,res)=>{
     })
   }
   // Send back to agency its customers accounts
-  else if(req.session.agencyID){
+  else if(req.isAgency){ //// TODO: Add role validation
     let docs=[];
-    compteManager().readClientAccountsForAgency(req.dbSession,req.session.agencyID)
+    compteManager().readClientAccountsForAgency(req.dbSession,req.user.agency)
     .then((dcs)=>{
       docs=dcs;
       return req.dbSession.close();
@@ -62,7 +66,7 @@ router.get('/',(req,res)=>{
     .catch((err)=>{
       res.status(403).json({success:false});
    })
-  }else if(req.session.sysAdminID){
+  }else if(req.isSystem){
     compteManager().readAll(req.dbSession)
     .then((docs)=>{
       res.json({success:true,result:docs});
@@ -77,9 +81,8 @@ router.get('/',(req,res)=>{
 })                                                                                                                                                                            
 
 router.put('/',(req,resp)=>{
-  console.log(req.body);
-  if(req.session.agencyID){
-    compteManager().createCustomerAccount(req.dbSession,req.session.agencyID,req.body)
+  if(req.isAgency){
+    compteManager().createCustomerAccount(req.dbSession,req.user.agency,req.body) /// TODO: Add role validation
     .then((_)=>{
       resp.json({success:true,message:"Ok Done."});
     })
@@ -92,7 +95,7 @@ router.put('/',(req,resp)=>{
 })
 
 router.patch('/:accountid',(req,res)=>{
-  if(req.sessionID && req.session.agencyID){
+  if(req.isAgency){
     compteManager().updateCustomerAccount(req.dbSession,req.params.accountid,req.body)
     .then((rs)=>{
       res.json({success:true,message:"Update Done"})
@@ -103,7 +106,7 @@ router.patch('/:accountid',(req,res)=>{
 })
 
 router.options('/:accountid/freeze',(req,res)=>{
-  if(req.sessionID && req.session.agencyID){
+  if(req.isAgency || req.isCustomer){
     compteManager().freezeAccount(req.dbSession,req.params.accountid)
     .then((rs)=>{
       res.json({success:true,message:"Freezed"})
@@ -114,7 +117,7 @@ router.options('/:accountid/freeze',(req,res)=>{
 })
 
 router.options('/:accountid/unfreeze',(req,res)=>{
-  if(req.sessionID && req.session.agencyID){
+  if(req.isAgency || req.isCustomer){
     compteManager().unFreezeAccount(req.dbSession,req.params.accountid)
     .then((rs)=>{
       res.json({success:true,message:"Unfreezed"})
@@ -125,8 +128,9 @@ router.options('/:accountid/unfreeze',(req,res)=>{
 })
 
 router.options('/:accountid/debit',(req,res)=>{
+  //// TODO : UNSECURE FUNCTIONNALITY !!!!!
   console.log(req.params);
-  if(req.sessionID && req.session.agencyID){
+  if(req.isAgency || req.isCustomer){
     compteManager().debitCustomerAccount(req.dbSession,req.params.accountid,req.body.amount)
     .then((rs)=>{
       res.json({success:true,message:"Account debited"})
@@ -141,7 +145,7 @@ router.options('/:accountid/debit',(req,res)=>{
 
 router.options('/:accountid/credit',(req,res)=>{
   console.log(req.params);
-  if(req.sessionID && req.session.agencyID){
+  if(req.isAgency){
     compteManager().creditCustomerAccount(req.dbSession,req.params.accountid,req.body.amount)
     .then((rs)=>{
       res.json({success:true,message:"Account credited"})

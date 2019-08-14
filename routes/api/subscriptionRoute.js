@@ -5,7 +5,7 @@ var accountManager=require('../../db/comptesManager')();
 var router=express.Router();
 var enums= require('../../db/constants');
 router.all((req,res,next)=>{
-    if(req.mobileActive || req.session.userType==enums.UserType.AGENCY || req.session.userType==enums.UserType.SYSTEM){
+    if(req.user){
         next();
     }else{
         res.status(403).json({success:false,message:'You are not logged in'});
@@ -13,8 +13,8 @@ router.all((req,res,next)=>{
 })
 
 router.get('/',(req,res)=>{
-    if(req.session.userType===enums.UserType.AGENCY){
-        subManager.readSubscriptionsForAgency(req.dbSession,req.session.agencyID)
+    if(req.isAgency){
+        subManager.readSubscriptionsForAgency(req.dbSession,req.user.agency)
         .then((result) => {
             res.json({
                 success:true,
@@ -32,8 +32,8 @@ router.get('/',(req,res)=>{
 })
 
 router.get('/account/:aid',(req,res)=>{
-    if(req.mobileActive && req.mobileSession.data.uid){
-        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.aid,req.mobileSession.data.uid)
+    if(req.isCustomer){
+        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.aid,req.user.uid)
         .then((bool)=>{
             if(bool){
                 return subManager.readSubscriptionsForCustomerByAccount(req.dbSession,req.params.aid);
@@ -81,9 +81,9 @@ router.get('/account/:aid',(req,res)=>{
 
 router.put('/',(req,resp)=>{
     // Check if the connected user is a customer
-    if(req.mobileActive){
+    if(req.isCustomer){
         // Check if the given account is owned by the currently connected customer
-        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.body.account,req.mobileSession.data.uid)
+        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.body.account,req.user.uid)
         .then((check)=>{
             if(check){
                 console.log("Account verified");
@@ -114,8 +114,8 @@ router.put('/',(req,resp)=>{
 
 
 router.options('/:id',(req,resp)=>{
-    if(req.session.agencyID){
-        subManager.checkIfAgencyCanChangeStateOf(req.dbSession,req.session.agencyID,req.params.id)
+    if(req.isAgency){
+        subManager.checkIfAgencyCanChangeStateOf(req.dbSession,req.user.agency,req.params.id)
         .then((bool)=>{
             if(bool){
                 let sub=req.params.id;
