@@ -15,6 +15,7 @@ function  handleToken(req,resp,next){
         let decoded=jwt.verify(token,PRIVATE_KEY);
         if(decoded){
             req.user=decoded;
+            req.token=token;
             if(decoded.type===enums.UserType.AGENCY){
                 req.isAgency=true;
             }
