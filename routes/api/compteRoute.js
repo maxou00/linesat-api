@@ -4,7 +4,6 @@ var clientManager = require('../../db/clientsManager')();
 var loginManager=require('../../db/loginManager')();
 var agencyManager=require('../../db/agencesManager')();
 
-
 var constants= require("../../db/constants");
 
 var crypto=require('crypto');
@@ -12,10 +11,40 @@ var router=express.Router();
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
 
-  if( req.user){
+  if(req.user){
     next();
   }else{
     resp.status(403).json({success:false,message:"You're not logged in."});
+  }
+}) 
+
+router.get('/business',(req,res)=>{
+  if(req.isSystem){
+    compteManager.readBusinessAccounts(req.dbSession)
+    .then((docs)=>{
+      res.json({success:true,result:docs});
+    })
+    .catch((err)=>{
+      res.status(403).json({success:false});
+    })
+  }
+  else{
+    res.status(400).json({success:false});
+  }
+})
+
+router.get('/customers',(req,res)=>{
+  if(req.isSystem){
+    compteManager.readCustomersAccount(req.dbSession)
+    .then((docs)=>{
+      res.json({success:true,result:docs});
+    })
+    .catch((err)=>{
+      res.status(403).json({success:false});
+    })
+  }
+  else{
+    res.status(400).json({success:false});
   }
 })
 
@@ -26,7 +55,7 @@ router.get('/',(req,res)=>{
     let accounts=[]; // Save retrieved accounts;
     let agencies=[]; // Save agencies ID 
     /// READ CUSTOMER's Accounts
-    compteManager().readAccountsWhereClientIs(req.dbSession,id)
+    compteManager.readAccountsWhereClientIs(req.dbSession,id)
     .then((accs)=>{
       console.log(accs);
       accounts=accs;
@@ -55,7 +84,7 @@ router.get('/',(req,res)=>{
   // Send back to agency its customers accounts
   else if(req.isAgency){ //// TODO: Add role validation
     let docs=[];
-    compteManager().readClientAccountsForAgency(req.dbSession,req.user.agency)
+    compteManager.readClientAccountsForAgency(req.dbSession,req.user.agency)
     .then((dcs)=>{
       docs=dcs;
       return req.dbSession.close();
@@ -66,19 +95,11 @@ router.get('/',(req,res)=>{
     .catch((err)=>{
       res.status(403).json({success:false});
    })
-  }else if(req.isSystem){
-    compteManager().readAll(req.dbSession)
-    .then((docs)=>{
-      res.json({success:true,result:docs});
-    })
-    .catch((err)=>{
-      res.status(403).json({success:false});
-    })
   }
   else{
-    resp.status(403).json({success:false,message:"Invalid credentials"});
+    res.status(400).json({success:false,message:"Invalid Request"});
   }
-})                                                                                                                                                                            
+})  
 
 router.put('/',(req,resp)=>{
   if(req.isAgency){

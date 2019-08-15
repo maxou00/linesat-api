@@ -12,7 +12,7 @@ const ISSUER="com.linetechnologie.linesat.api.authservice";
 
 router.post('/sys',(req,resp)=>{
     if(req.isSystem){
-        sysAdManager.readByRef(req.user.uid)
+        sysAdManager.readByRef(req.dbSession,req.user.uid)
         .then((sysUser)=>{
             resp.json({
                 success:true,

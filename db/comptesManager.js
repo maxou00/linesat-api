@@ -301,6 +301,41 @@ function ComptesManagerBuilder(){
                 .then((rs)=>{
                     resolve(doc);
                 })
+                .catch(reject);
+            })
+        },
+
+        readBusinessAccounts(session){
+            return new Promise((resolve,reject)=>{
+                let docs=[];
+                session
+                .getSchema(connection.database)
+                .getCollection("accounts")
+                .find("type='BUSINESS'")
+                .execute((row)=>{
+                    docs.push(row);
+                })
+                .then((rs)=>{
+                    resolve(docs);
+                })
+                .catch(reject);
+            })
+        },
+
+        readCustomersAccount(session){
+            return new Promise((resolve,reject)=>{
+                let docs=[];
+                session
+                .getSchema(connection.database)
+                .getCollection("accounts")
+                .find("type='CUSTOMER'")
+                .execute((row)=>{
+                    docs.push(row);
+                })
+                .then((rs)=>{
+                    resolve(docs);
+                })
+                .catch(reject);
             })
         },
 
