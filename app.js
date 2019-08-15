@@ -1,6 +1,7 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
+var cors= require('cors');
 var logger = require('morgan');
 var redis = require("redis");
 var redisClient=redis.createClient();
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(cors());
 app.use(authHandler); /// Handling token based authentication
 app.use('/api',api);
 // catch 404 and forward to error handler

@@ -4,6 +4,7 @@ var loginManager=require('../../db/loginManager')();
 let userType=require('../../db/constants').UserType;
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
+    console.log(req.user);
     if(req.user){
         next();
     }else{

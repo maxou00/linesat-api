@@ -16,13 +16,14 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 })
 
 router.get('/',(req,res)=>{
-    agenceManager().readAll(req.dbSession)
+    agenceManager.readAll(req.dbSession)
     .then((result) => {
         res.json({
             success:true,
             result:result
         });
-    }).catch((err) => {
+    })
+    .catch((err) => {
         res.json({
             success:false,
             errors:[
@@ -71,10 +72,9 @@ router.put('/',(req,res)=>{
 })
 
 router.put('/users',(req,resp)=>{
-    let manager = userManager();
     /// We check if the current Agency User have sufficient privileges to see the users list.
     if(req.isAgency && req.roles.grants.includes(permissions.perm_lvl_three)){
-        manager.createUser(req.dbSession,{user:req.body,agency:req.user.agency})
+        userManager.createUser(req.dbSession,{user:req.body,agency:req.user.agency})
         .then((result) => {
             resp.json({
                 success:true,
@@ -97,7 +97,7 @@ router.put('/users',(req,resp)=>{
 
 
 router.patch('/:id',(req,res)=>{
-    agenceManager().update(req.dbSession,req.params.id,req.body)
+    agenceManager.update(req.dbSession,req.params.id,req.body)
     .then((result) => {
         console.log(result);
     }).catch((err) => {

@@ -10,8 +10,7 @@ const users= require('../../db/constants').UserType;
 */
 
 function handleRole(req,res,next){
-    next();
-    if(req.user.uid && (req.user.type===users.AGENCY || req.user.type===users.SYSTEM )){
+    if( req.user && req.user.uid && (req.user.type===users.AGENCY || req.user.type===users.SYSTEM )){
         agencyUserManager.readUserByRef(req.dbSession,req.user.uid)
         .then((user)=>{
             req.roles=user.roles;
