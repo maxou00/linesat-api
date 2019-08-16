@@ -4,7 +4,7 @@ var clientManager = require('../../db/clientsManager')();
 var loginManager=require('../../db/loginManager')();
 var agencyManager=require('../../db/agencesManager')();
 
-var constants= require("../../db/constants");
+var constants= require("../../lib/constants");
 
 var crypto=require('crypto');
 var router=express.Router();

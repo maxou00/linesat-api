@@ -2,7 +2,7 @@ const connection = require('./connection').config;
 const AccountsManager= require('./comptesManager')();
 const BouquetsManager= require('./bouquetsManager')();
 const CustomerManager= require('./clientsManager')();
-const enums=require('./constants');
+const enums=require('../lib/constants');
 
 function  SubscriptionBuilder(){
     return {

@@ -1,6 +1,6 @@
 var clientManager=require('../../db/clientsManager')();
 var router=require('express').Router();
-var enums=require('../../db/constants');
+var enums=require('../../lib/constants');
 
 router.get('/',(req,res)=>{
     if(req.isCustomer){

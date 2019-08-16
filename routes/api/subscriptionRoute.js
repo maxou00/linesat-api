@@ -3,7 +3,7 @@ var clientManager=require('../../db/clientsManager')();
 var subManager= require('../../db/subscriptionsManager')();
 var accountManager=require('../../db/comptesManager')();
 var router=express.Router();
-var enums= require('../../db/constants');
+var enums= require('../../lib/constants');
 router.all((req,res,next)=>{
     if(req.user){
         next();

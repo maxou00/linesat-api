@@ -1,7 +1,7 @@
 var router=require('express').Router();
 var bManager=require('../../db/bouquetsManager')();
 var loginManager=require('../../db/loginManager')();
-let userType=require('../../db/constants').UserType;
+let userType=require('../../lib/constants').UserType;
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
     console.log(req.user);

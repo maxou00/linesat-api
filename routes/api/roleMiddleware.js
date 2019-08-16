@@ -1,5 +1,5 @@
 const agencyUserManager = require ('../../db/agencyUserManager')();
-const users= require('../../db/constants').UserType;
+const users= require('../../lib/constants').UserType;
 /**
 * This middleware is intented to be used for administration role.
 * By the way, this mw will be able to read the request and inject a [role] attribute for the given user

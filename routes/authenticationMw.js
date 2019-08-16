@@ -1,5 +1,5 @@
 const jwt=require('jsonwebtoken');
-const enums = require('../db/constants');
+const enums = require('../lib/constants');
 const TOKEN_HEADER="x-access-token";
 
 /**

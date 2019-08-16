@@ -3,7 +3,7 @@ let agencyUserManager= require('../../db/agencyUserManager')();
 let agencyManager= require('../../db/agencesManager')();
 let sysAdManager = require('../../db/sysAdminsManager')();
 let router =require("express").Router();
-let userType=require('../../db/constants').UserType;
+let userType=require('../../lib/constants').UserType;
 
 let jwt = require('jsonwebtoken');
 

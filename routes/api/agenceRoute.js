@@ -3,7 +3,7 @@ var agenceManager=require('../../db/agencesManager')();
 var userManager=require('../../db/agencyUserManager')();
 var loginManager=require('../../db/loginManager')();
 
-var constants = require('../../db/constants');
+var constants = require('../../lib/constants');
 
 var router=express.Router();
 
