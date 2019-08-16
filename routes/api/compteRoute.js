@@ -37,9 +37,11 @@ router.get('/customers',(req,res)=>{
   if(req.isSystem){
     compteManager.readCustomersAccount(req.dbSession)
     .then((docs)=>{
+      console.log(docs);
       res.json({success:true,result:docs});
     })
     .catch((err)=>{
+      console.log(err);
       res.status(403).json({success:false});
     })
   }

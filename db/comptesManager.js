@@ -1,6 +1,5 @@
 const connection = require('./connection').config;
-const customerManager=require('./clientsManager');
-const agencyManager=require('./agencesManager');
+let customerManager=require('./clientsManager');
 const uuidv4=require('uuid/v4');
 
 function ComptesManagerBuilder(){
@@ -308,15 +307,56 @@ function ComptesManagerBuilder(){
         readBusinessAccounts(session){
             return new Promise((resolve,reject)=>{
                 let docs=[];
-                session
-                .getSchema(connection.database)
-                .getCollection("accounts")
-                .find("type='BUSINESS'")
+                let agenciesIds=[];
+                let schema = session
+                .getSchema(connection.database);
+
+                let accounts = schema.getCollection("accounts");
+                let agencies= schema.getCollection('agencies');
+
+                accounts.find("type='BUSINESS'")
                 .execute((row)=>{
                     docs.push(row);
                 })
-                .then((rs)=>{
-                    resolve(docs);
+                .then((r)=>{
+                    /// Extract agencies list from docs list
+                    docs.forEach((doc)=>{
+                        if( ! agenciesIds.includes(doc.agency)){
+                            agenciesIds.push(doc.agency);
+                        }
+                    })
+
+                    /// Retrieve agencies documents from store
+                    return Promise.all(
+                        agenciesIds.map((ag)=>{
+                            let agDoc=undefined;
+                            return agencies
+                            .find("_id=:id")
+                            .bind('id',ag)
+                            .execute((_)=>{
+                                agDoc=_;
+                            })
+                            .then((r)=>{
+                                return agDoc;
+                            })
+                        })
+                    )
+                })
+                .then((dcs=[])=>{
+                    /// Filter to remove possible cases where ther is an undefined value
+                    return dcs.filter(dc=>dc!==undefined && dc !==null);
+                })
+                .then((ags=[])=>{
+                    /// Map each account to its corresponding agency an return the built value
+                    resolve(
+                        docs.map((doc,idx)=>{
+                            let agc= ags.find(ag=>ag._id===doc.agency);
+                            if(agc){
+                                doc.agencyIdentity=agc.identity
+                            }
+                            return doc;
+                        })
+                    );
                 })
                 .catch(reject);
             })
@@ -325,15 +365,95 @@ function ComptesManagerBuilder(){
         readCustomersAccount(session){
             return new Promise((resolve,reject)=>{
                 let docs=[];
-                session
-                .getSchema(connection.database)
-                .getCollection("accounts")
-                .find("type='CUSTOMER'")
+                let agenciesIds=[];
+                let customersIds=[];
+                let schema = session
+                .getSchema(connection.database);
+
+                let accounts = schema.getCollection("accounts");
+                let agencies= schema.getCollection('agencies');
+                let customers = schema.getCollection('customers');
+
+                accounts.find("type='CUSTOMER'")
                 .execute((row)=>{
                     docs.push(row);
                 })
-                .then((rs)=>{
-                    resolve(docs);
+                .then((r)=>{
+                    /// Extract agencies list from docs list
+                    docs.forEach((doc)=>{
+                        if(!agenciesIds.includes(doc.agency)){
+                            agenciesIds.push(doc.agency);
+                        }
+                        if(!customersIds.includes(doc.customer)){
+                            customersIds.push(doc.customer);
+                        }
+                    })
+                    /// Retrieve agencies documents from store
+                    return Promise.all(
+                        [
+                            Promise.all(
+                                agenciesIds.map((ag)=>{
+                                    let agDoc=undefined;
+                                    return agencies
+                                    .find("_id=:id")
+                                    .bind('id',ag)
+                                    .fields(['_id','identity'])
+                                    .execute((_)=>{
+                                        agDoc=_;
+                                    })
+                                    .then((r)=>{
+                                        return agDoc;
+                                    })
+                                    .catch((err)=>{return undefined});
+                                })
+                            ),
+
+                            Promise.all(
+                                customersIds.map((cs)=>{
+                                    let csD=undefined;
+                                    return customers
+                                    .find("_id=:id")
+                                    .bind('id',cs)
+                                    .fields(['_id','identity'])
+                                    .execute((_)=>{
+                                        csD=_;
+                                    })
+                                    .then((r)=>{
+                                        return csD;
+                                    })
+                                    .catch((err)=>{return undefined});
+                                })
+                            )
+
+                        ]
+                        
+                    )
+                })
+                .then(([ags=[],cuss=[]])=>{
+                    /// Filter to remove possible cases where ther is an undefined value
+                    return [
+                        ags.filter(dc=>dc!==undefined && dc !==null),
+                        cuss.filter(dc=>dc!==undefined && dc !==null)
+                    ]
+                })
+                .then(([ags=[],cuss=[]])=>{
+                    /// Map each account to its corresponding agency and customer an return the built value
+                    let mapped=docs.map((doc,idx)=>{
+                        console.log(ags);
+                        let agc= ags.find(ag=>ag._id===doc.agency);
+                        console.log(agc);
+                        if(agc){
+                            doc.agencyIdentity=agc.identity
+                        }
+                        console.log(cuss);
+                        let cs= cuss.find(c=>c._id===doc.customer);
+                        console.log(cs);
+                        if(cs){
+                            doc.customerIdentity=cs.identity;
+                        }
+                        return doc;
+                    })
+                    resolve(mapped) ;
                 })
                 .catch(reject);
             })
