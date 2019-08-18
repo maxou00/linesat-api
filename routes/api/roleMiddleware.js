@@ -1,4 +1,5 @@
 const agencyUserManager = require ('../../db/agencyUserManager')();
+const sysUsers= require('../../db/sysAdminsManager')();
 const users= require('../../lib/constants').UserType;
 /**
 * This middleware is intented to be used for administration role.
@@ -10,15 +11,31 @@ const users= require('../../lib/constants').UserType;
 */
 
 function handleRole(req,res,next){
-    if( req.user && req.user.uid && (req.user.type===users.AGENCY || req.user.type===users.SYSTEM )){
-        agencyUserManager.readUserByRef(req.dbSession,req.user.uid)
-        .then((user)=>{
-            req.roles=user.roles;
-            next();
-        })
-        .catch(err=>{
-            next();
-        })
+    if( req.isSystem || req.isAgency){
+        if(req.isSystem){
+            sysUsers.readByRef(req.dbSession,req.user.uid)
+            .then((user)=>{
+                req.roles=user.roles;
+                req.roleAvailable=true;
+                next();
+            })
+            .catch(err=>{
+                req.roleAvailable=false;
+                next();
+            })
+        }else{
+            agencyUserManager.readUserByRef(req.dbSession,req.user.uid)
+            .then((user)=>{
+                req.roles=user.roles;
+                req.roleAvailable=true;
+                next();
+            })
+            .catch(err=>{
+                req.roleAvailable=false;
+                next();
+            })
+        }
+        
     }else{
         next();
     }
