@@ -2,7 +2,10 @@ var clientManager=require('../../db/clientsManager')();
 var router=require('express').Router();
 var enums=require('../../lib/constants');
 
+var PermissionManager = require('../../lib/PermissionManager');
+
 router.get('/',(req,res)=>{
+
     if(req.isCustomer){
         clientManager.readByRef(req.dbSession,req.user.uid)
         .then((customer)=>{
@@ -12,7 +15,15 @@ router.get('/',(req,res)=>{
             console.log(err);
             res.status(500).json({sucess:false});
         })
-    }else if(req.isSystem){
+    }
+    
+    else if(req.isSystem){
+
+        if(! PermissionManager.canReadCustomers(req.roles.grantLevel)){
+            resp.status(400).json("Not enough permission");
+            return;
+        }
+
         clientManager.readAll(req.dbSession)
         .then((result) => {
             res.json({
@@ -25,7 +36,9 @@ router.get('/',(req,res)=>{
                 error:err
             })
         });
-    }else{
+    }
+    
+    else{
         res.json({
             success:false,
             message:'Unauthorized Access'
@@ -35,14 +48,6 @@ router.get('/',(req,res)=>{
 })
 
 router.put('/',(req,res)=>{
-
-    if(!(req.isCustomer)){
-        res.json({
-            success:false,
-            message:"You are not an agency."
-        });
-        return;
-    }
     clientManager.create(req.dbSession,req.body)
         .then((result) => {
             res.json(

@@ -1,16 +1,14 @@
-var express=require('express');
+var router=require('express').Router();
 var compteManager=require('../../db/comptesManager')();
 var clientManager = require('../../db/clientsManager')();
 var loginManager=require('../../db/loginManager')();
 var agencyManager=require('../../db/agencesManager')();
-
 var constants= require("../../lib/constants");
-
 var crypto=require('crypto');
-var router=express.Router();
+
+var PermissionManager = require('../../lib/PermissionManager');
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
-
   if(req.user){
     next();
   }else{
@@ -20,6 +18,12 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 
 router.get('/business',(req,res)=>{
   if(req.isSystem){
+
+    if(! PermissionManager.canReadBusinessAccounts(req.roles.grantLevel)){
+      resp.status(400).json("Not enough permission");
+      return;
+    }
+
     compteManager.readBusinessAccounts(req.dbSession)
     .then((docs)=>{
       res.json({success:true,result:docs});
@@ -35,6 +39,12 @@ router.get('/business',(req,res)=>{
 
 router.get('/customers',(req,res)=>{
   if(req.isSystem){
+
+    if(! PermissionManager.canReadCustomerAccounts(req.roles.grantLevel)){
+      resp.status(400).json("Not enough permission");
+      return;
+    }
+
     compteManager.readCustomersAccount(req.dbSession)
     .then((docs)=>{
       console.log(docs);
@@ -117,7 +127,7 @@ router.put('/',(req,resp)=>{
   }
 })
 
-router.patch('/:accountid',(req,res)=>{
+/*router.patch('/:accountid',(req,res)=>{
   if(req.isAgency){
     compteManager().updateCustomerAccount(req.dbSession,req.params.accountid,req.body)
     .then((rs)=>{
@@ -127,6 +137,7 @@ router.patch('/:accountid',(req,res)=>{
     res.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
+*/
 
 router.options('/:accountid/freeze',(req,res)=>{
   if(req.isAgency || req.isCustomer){
@@ -150,6 +161,7 @@ router.options('/:accountid/unfreeze',(req,res)=>{
   }
 })
 
+/*
 router.options('/:accountid/debit',(req,res)=>{
   //// TODO : UNSECURE FUNCTIONNALITY !!!!!
   console.log(req.params);
@@ -165,6 +177,8 @@ router.options('/:accountid/debit',(req,res)=>{
     res.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
+
+*/
 
 router.options('/:accountid/credit',(req,res)=>{
   console.log(req.params);
