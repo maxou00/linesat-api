@@ -2,6 +2,8 @@ const connection = require('./connection').config;
 let customerManager=require('./clientsManager');
 const uuidv4=require('uuid/v4');
 
+let genAccountCode = require('../lib/helpers');
+
 function ComptesManagerBuilder(){
     
     return {
@@ -20,6 +22,7 @@ function ComptesManagerBuilder(){
                     type:"BUSINESS",
                     amount:0,
                     agency:agency,
+                    code:genAccountCode(),
                     creationDate:Date.now()
                 }
 
@@ -116,6 +119,7 @@ function ComptesManagerBuilder(){
                                 agency:agency_doc['_id'],
                                 customer:customer_doc['_id'],
                                 amount:0,
+                                code:genAccountCode(),
                                 creationDate:Date.now()
                             }
                             console.log("creating doc");
@@ -145,6 +149,26 @@ function ComptesManagerBuilder(){
                 else{
                     reject({message:'Validation failed'})
                 }
+            })
+        },
+        
+        readAccountByCode(session,code=''){
+            return new Promise((resolve,reject)=>{
+                let doc=null;
+                session
+                .getSchema(connection.database)
+                .getCollection("accounts")
+                .find("code=:id")
+                .bind("id",code)
+                .execute((row)=>{
+                    doc=row;
+                })
+                .then((rs)=>{
+                    resolve(doc);
+                })
+                .catch(err=>{
+                    reject(err);
+                })
             })
         },
 

@@ -3,7 +3,9 @@ var agenceManager=require('../../db/agencesManager')();
 var userManager=require('../../db/agencyUserManager')();
 var loginManager=require('../../db/loginManager')();
 var constants = require('../../lib/constants');
-var PermissionManager = require('../../lib/PermissionManager');
+var PM = require('../../lib/PermissionManager');
+const SPM = PM.system;
+const APM = PM.agency;
 
 var router=express.Router();
 
@@ -19,14 +21,14 @@ router.get('/',(req,res)=>{
 
     // Check if User is a system user
     if(! req.isSystem){
-        resp.status(400).json({success:false,message:'Unauthorized access'});
+        resp.status(401).json({success:false,message:'Unauthorized access'});
         return;
     }
  
     //PASSED !!!
     // Check if user has enough privileges
-    if(! PermissionManager.canReadAgencies(req.roles.grantLevel)){
-        resp.status(400).json("Not enough permission");
+    if(! SPM.canReadAgencies(req.roles.grantLevel)){
+        resp.status(401).json({success:false,message:"Not enough permission"});
         return;
     }
 
@@ -54,8 +56,8 @@ router.get('/users',(req,resp)=>{
         return;
     }
     /// We check if the current Agency User have sufficient privileges to see the users list. //// _____ TO BE CORRECTED
-    if(! PermissionManager.canReadAgencyUsers(req.roles.grantLevel)){
-        resp.status(400).json("Not enough permission");
+    if(!APM.canReadUsers(req.roles.grantLevel)){
+        resp.status(401).json({success:false,message:"Not enough permission"});
         return;
     }
 
@@ -78,11 +80,11 @@ router.get('/users',(req,resp)=>{
 
 router.put('/',(req,res)=>{
     if(! req.isSystem){
-        resp.status(400).json("Access violation");
+        resp.status(401).json({success:false,message:"Unauthorized access"});
         return;
     }
 
-    if(! PermissionManager.canCreateAgency(req.roles.grantLevel)){
+    if(! SPM.canCreateAgency(req.roles.grantLevel)){
         resp.status(400).json("Not enough permission");
         return;
     }
@@ -103,7 +105,7 @@ router.put('/',(req,res)=>{
 
 router.put('/users',(req,resp)=>{
     /// We check if the current Agency User have sufficient privileges to see the users list.
-    if(req.isAgency && req.roles.grants.includes(permissions.perm_lvl_three)){
+    if(req.isAgency && APM.canCreateUser(req.roles.grantLevel)){
         userManager.createUser(req.dbSession,{user:req.body,agency:req.user.agency})
         .then((result) => {
             resp.json({
@@ -113,7 +115,7 @@ router.put('/users',(req,resp)=>{
         })
         .catch((err) => {
             console.log(err);
-            resp.json({
+            resp.status(403).json({
                 success:false,
                 errors:[
                     err
@@ -121,11 +123,103 @@ router.put('/users',(req,resp)=>{
             })
         });
     }else{
-        resp.status(403).json({success:false,message:'You don\'t have enough grants to perform this action'})
+        resp.status(401).json({success:false,message:"Not enough permission"});
+    }
+})
+
+router.post('/user/:uid/credit',(req,resp)=>{
+    /// We check if the current Agency User have sufficient privileges to see the users list.
+    if(req.isAgency && APM.canCreateUser(req.roles.grantLevel)){
+        userManager.compareAgencyOfUsers(req.dbSession,{userA:req.user.uid,userB:req.params.uid})
+        .then((bool)=>{
+            if(bool){
+                userManager.creditUser(req.dbSession,req.params.uid)
+                .then((result) => {
+                    resp.json({
+                        success:true,
+                        message:'Agency User Access credited'
+                    });
+                })
+                .catch((err) => {
+                    console.log(err);
+                    resp.status(403).json({
+                        success:false,
+                        errors:[
+                            err
+                        ]
+                    })
+                });
+            }else{
+                resp.status(401).json({success:false,message:'Access violation'});
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+            resp.status(403).json({
+                success:false,
+                errors:[
+                    err
+                ]
+            })
+        });
+    }else{
+        resp.status(401).json({success:false,message:"Not enough permission"});
+    }
+})
+
+
+router.post('/user/:uid/discredit',(req,resp)=>{
+    /// We check if the current Agency User have sufficient privileges to see the users list.
+    if(req.isAgency && APM.canCreateUser(req.roles.grantLevel)){
+        userManager.compareAgencyOfUsers(req.dbSession,{userA:req.user.uid,userB:req.params.uid})
+        .then((bool)=>{
+            if(bool){
+                userManager.discreditUser(req.dbSession,req.params.uid)
+                .then((result) => {
+                    resp.json({
+                        success:true,
+                        message:'Agency User Access discredited'
+                    });
+                })
+                .catch((err) => {
+                    console.log(err);
+                    resp.status(403).json({
+                        success:false,
+                        errors:[
+                            err
+                        ]
+                    })
+                });
+            }else{
+                resp.status(401).json({success:false,message:'Access violation'});
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+            resp.status(403).json({
+                success:false,
+                errors:[
+                    err
+                ]
+            })
+        });
+    }else{
+        resp.status(401).json({success:false,message:"Not enough permission"});
     }
 })
 
 router.patch('/:id',(req,res)=>{
+    if(! req.agency){
+        resp.status(401).json({success:false,message:"Unauthorized access"});
+        return;
+    }
+    if(! APM.canUpdateAgencyProfile(req.roles.grantLevel)){
+        resp.status(401).json({success:false,message:"Not enough permission"});
+        return;
+    }
+    
+    /// TODO : Check if the user is really a user of the given agency
+    
     agenceManager.update(req.dbSession,req.params.id,req.body)
     .then((result) => {
         console.log(result);

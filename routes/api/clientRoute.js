@@ -2,10 +2,12 @@ var clientManager=require('../../db/clientsManager')();
 var router=require('express').Router();
 var enums=require('../../lib/constants');
 
-var PermissionManager = require('../../lib/PermissionManager');
+var pm = require('../../lib/PermissionManager');
+
+const SPM = pm.system;
+const APM=pm.agency;
 
 router.get('/',(req,res)=>{
-
     if(req.isCustomer){
         clientManager.readByRef(req.dbSession,req.user.uid)
         .then((customer)=>{
@@ -19,8 +21,8 @@ router.get('/',(req,res)=>{
     
     else if(req.isSystem){
 
-        if(! PermissionManager.canReadCustomers(req.roles.grantLevel)){
-            resp.status(400).json("Not enough permission");
+        if(! SPM.canReadCustomers(req.roles.grantLevel)){
+            resp.status(401).json({success:false,message:"Not enough permission"});
             return;
         }
 

@@ -45,6 +45,7 @@ function LoginManagerBuilder(){
                 sys.find("credentials.username=:usrn  AND credentials.passwordHash=:pass")
                 .bind("usrn",username)
                 .bind("pass",password)
+                .fields(['_id','owner','roles'])
                 .execute((row)=>{
                     item=row;
                 })
@@ -76,6 +77,7 @@ function LoginManagerBuilder(){
                 agencyUsers.find("credentials.username=:usr AND credentials.passwordHash=:pass")
                 .bind("usr",username)
                 .bind("pass",hash)
+                .fields(['_id','owner','agency','roles','creationDate'])
                 .execute((row)=>{
                     /// FIND THE AGENCY IN WHICH (HE|SHE) IS A VALID USER
                     user=row;
@@ -105,9 +107,7 @@ function LoginManagerBuilder(){
                 })
             })
         }
-    
     };
-
 }
 
 module.exports=LoginManagerBuilder;

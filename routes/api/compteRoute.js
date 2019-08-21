@@ -6,7 +6,9 @@ var agencyManager=require('../../db/agencesManager')();
 var constants= require("../../lib/constants");
 var crypto=require('crypto');
 
-var PermissionManager = require('../../lib/PermissionManager');
+var pm = require('../../lib/PermissionManager');
+const APM = pm.agency;
+const SPM = pm.system;
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
   if(req.user){
@@ -16,51 +18,49 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
   }
 }) 
 
-router.get('/business',(req,res)=>{
+router.get('/business',(req,resp)=>{
   if(req.isSystem){
 
-    if(! PermissionManager.canReadBusinessAccounts(req.roles.grantLevel)){
-      resp.status(400).json("Not enough permission");
+    if(! SPM.canReadBusinessAccounts(req.roles.grantLevel)){
+      resp.status(401).json({success:false,message:"Not enough permission"});
       return;
     }
 
     compteManager.readBusinessAccounts(req.dbSession)
     .then((docs)=>{
-      res.json({success:true,result:docs});
+      resp.json({success:true,result:docs});
     })
     .catch((err)=>{
-      res.status(403).json({success:false});
+      resp.status(403).json({success:false});
     })
   }
   else{
-    res.status(400).json({success:false});
+    resp.status(400).json({success:false});
   }
 })
 
-router.get('/customers',(req,res)=>{
+router.get('/customers',(req,resp)=>{
   if(req.isSystem){
-
-    if(! PermissionManager.canReadCustomerAccounts(req.roles.grantLevel)){
-      resp.status(400).json("Not enough permission");
+    if(! SPM.canReadCustomerAccounts(req.roles.grantLevel)){
+      resp.status(401).json({success:false,message:"Not enough permission"});
       return;
     }
-
     compteManager.readCustomersAccount(req.dbSession)
     .then((docs)=>{
       console.log(docs);
-      res.json({success:true,result:docs});
+      resp.json({success:true,result:docs});
     })
     .catch((err)=>{
       console.log(err);
-      res.status(403).json({success:false});
+      resp.status(403).json({success:false});
     })
   }
   else{
-    res.status(400).json({success:false});
+    resp.status(400).json({success:false});
   }
 })
 
-router.get('/',(req,res)=>{
+router.get('/',(req,resp)=>{
   // Send back to customer its  accounts he created in agencies
   if(req.isCustomer){
     let id= req.user.uid;
@@ -94,7 +94,11 @@ router.get('/',(req,res)=>{
     })
   }
   // Send back to agency its customers accounts
-  else if(req.isAgency){ //// TODO: Add role validation
+  else if(req.isAgency){ 
+    if(! APM.canReadCustomerAccounts(req.roles.grantLevel)){
+      resp.status(401).json({success:false,message:"Not enough permission"});
+      return;
+    }
     let docs=[];
     compteManager.readClientAccountsForAgency(req.dbSession,req.user.agency)
     .then((dcs)=>{
@@ -102,20 +106,20 @@ router.get('/',(req,res)=>{
       return req.dbSession.close();
     })
     .then(_=>{
-      res.json({success:true,result:docs});
+      resp.json({success:true,result:docs});
     })
     .catch((err)=>{
-      res.status(403).json({success:false});
+      resp.status(403).json({success:false});
    })
   }
   else{
-    res.status(400).json({success:false,message:"Invalid Request"});
+    resp.status(400).json({success:false,message:"Invalid Request"});
   }
 })  
 
 router.put('/',(req,resp)=>{
   if(req.isAgency){
-    compteManager().createCustomerAccount(req.dbSession,req.user.agency,req.body) /// TODO: Add role validation
+    compteManager.createCustomerAccount(req.dbSession,req.user.agency,req.body) /// TODO: Add role validation
     .then((_)=>{
       resp.json({success:true,message:"Ok Done."});
     })
@@ -139,25 +143,25 @@ router.put('/',(req,resp)=>{
 })
 */
 
-router.options('/:accountid/freeze',(req,res)=>{
-  if(req.isAgency || req.isCustomer){
-    compteManager().freezeAccount(req.dbSession,req.params.accountid)
+router.post('/:accountid/freeze',(req,resp)=>{
+  if(req.isCustomer){
+    compteManager.freezeAccount(req.dbSession,req.params.accountid)
     .then((rs)=>{
-      res.json({success:true,message:"Freezed"})
+      resp.json({success:true,message:"Freezed"})
     })
   }else{
-    res.status(403).json({success:false,message:'You\'re not logged in'});
+    resp.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
 
-router.options('/:accountid/unfreeze',(req,res)=>{
-  if(req.isAgency || req.isCustomer){
-    compteManager().unFreezeAccount(req.dbSession,req.params.accountid)
+router.post('/:accountid/unfreeze',(req,resp)=>{
+  if(req.isCustomer){
+    compteManager.unFreezeAccount(req.dbSession,req.params.accountid)
     .then((rs)=>{
-      res.json({success:true,message:"Unfreezed"})
+      resp.json({success:true,message:"Unfreezed"})
     })
   }else{
-    res.status(403).json({success:false,message:'You\'re not logged in'});
+    resp.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
 
@@ -180,18 +184,22 @@ router.options('/:accountid/debit',(req,res)=>{
 
 */
 
-router.options('/:accountid/credit',(req,res)=>{
+router.post('/:accountid/credit',(req,resp)=>{
   console.log(req.params);
   if(req.isAgency){
-    compteManager().creditCustomerAccount(req.dbSession,req.params.accountid,req.body.amount)
+    if(! APM.canCreditCustomerAccount(req.roles.grantLevel)){
+      resp.status(401).json({success:false,message:"Not enough permission"});
+      return;
+    }
+    compteManager.creditCustomerAccount(req.dbSession,req.params.accountid,req.body.amount)
     .then((rs)=>{
-      res.json({success:true,message:"Account credited"})
+      resp.json({success:true,message:"Account credited"})
     })
     .catch((err)=>{
-      res.status(403).json({success:false});
+      resp.status(403).json({success:false});
     })
   }else{
-    res.status(403).json({success:false,message:'You\'re not logged in'});
+    resp.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
 

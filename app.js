@@ -5,7 +5,6 @@ var cors= require('cors');
 var logger = require('morgan');
 var redis = require("redis");
 var redisClient=redis.createClient();
-
 // Handling redis client error
 redisClient.on('error',(err)=>{
   console.log("Redis error");

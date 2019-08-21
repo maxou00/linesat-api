@@ -3,12 +3,12 @@ var bManager=require('../../db/bouquetsManager')();
 var loginManager=require('../../db/loginManager')();
 let userType=require('../../lib/constants').UserType;
 
-let PermissionManager = require('../../lib/PermissionManager');
+let pm = require('../../lib/PermissionManager');
+
+const APM= pm.agency;
+const SPM=pm.system;
 
 router.all(/^\/(.*)/, (req,resp,next)=>{
-    console.log(req.user);
-    console.log(req.roles);
-
     if(req.user){
         next();
     }else{
@@ -17,12 +17,6 @@ router.all(/^\/(.*)/, (req,resp,next)=>{
 })
 
 router.get('/',(req,res)=>{
-
-    if(!PermissionManager.canReadBouquets(req.roles.grantLevel)){
-        resp.status(400).json("Not enough permission");
-        return;
-    }
-
     bManager.readAll(req.dbSession)
     .then((result) => {
         res.json({
@@ -42,8 +36,8 @@ router.get('/',(req,res)=>{
 
 router.put('/',(req,resp)=>{
     if(req.isSystem){ 
-        if(! PermissionManager.canCreateBouquet(req.roles.grantLevel)){
-            resp.status(400).json("Not enough permission");
+        if(! SPM.canCreateBouquet(req.roles.grantLevel)){
+            resp.status(401).json({success:false,message:"Not enough permission"});
             return;
         }
         /// TODO: check if the user has sufficient rights to create a bouquet
@@ -62,14 +56,14 @@ router.put('/',(req,resp)=>{
             });
         });
     }else{
-        resp.status(403).json("You can't do that");
+        resp.status(401).json({success:false,message:"Not enough permission"});
     }
 })
 
 router.patch('/:id',(req,resp)=>{
     if(req.params.id && req.isSystem){
-        if(! PermissionManager.canCreateBouquet(req.roles.grantLevel)){
-            resp.status(400).json("Not enough permission");
+        if(! SPM.canCreateBouquet(req.roles.grantLevel)){
+            resp.status(401).json({success:false,message:"Not enough permission"});
             return;
         }
 
@@ -88,7 +82,7 @@ router.options('/:id',(req,resp)=>{
     console.log(req.body);
 
     if(req.params.id && req.isSystem && req.body.option){
-        if(! PermissionManager.canLockBouquet(req.roles.grantLevel)){
+        if(! SPM.canLockBouquet(req.roles.grantLevel)){
             resp.status(400).json("Not enough permission");
             return;
         }
@@ -120,7 +114,7 @@ router.options('/:id',(req,resp)=>{
 
 router.delete('/:id',(req,resp)=>{
     if(req.params.id && req.isSystem){
-        if(! PermissionManager.canDeleteBouquet(req.roles.grantLevel)){
+        if(! SPM.canDeleteBouquet(req.roles.grantLevel)){
             resp.status(400).json("Not enough permission");
             return;
         }

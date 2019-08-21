@@ -1,5 +1,4 @@
 var api = require('express').Router();
-const handler=require('./routes/api/customerHandler');
 const dbHandler=require('./routes/mysqlSessionMw');
 const roleHandler = require('./routes/api/roleMiddleware');
 
@@ -12,7 +11,6 @@ var loginRouter=require('./routes/api/loginRoute');
 var subscriptionRouter=require('./routes/api/subscriptionRoute');
 var transfertRouter= require('./routes/api/transfertsRoute');
 
-api.use(handler.router); // middleware for customer session with x-access-token and x-user-agent headers*/
 api.use(dbHandler); // middleware for db connection injection
 api.use(roleHandler); // middleware set for reading user info and injecting its access level details.
 

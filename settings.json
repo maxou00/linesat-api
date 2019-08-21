@@ -1,0 +1,24 @@
+{
+    "token":{
+        "header":"x-access-token",
+        "privateKey":"com.linetechnologie.linesat.api.there-Is-a-pie@2019-InTheSky",
+        "algorithm":"SHA1",
+        "issuer":"com.linetechnologie.linesat.api.authservice"
+    },
+    "defaultAlgorithm":"SHA1",
+    "database":{
+        "hostConfig":{
+            "host":"localhost",
+            "port":33060,
+            "user":"linesat",
+            "password":"Linesat2019",
+            "database":"linesat"
+        },
+        "pooling":{
+            "enabled":true,
+            "maxSize":25,
+            "maxIdleTime":30000,
+            "queueTimeout":10000
+        }
+    }
+}

@@ -3,12 +3,39 @@ var clientManager=require('../../db/clientsManager')();
 var accountManager=require('../../db/comptesManager')();
 
 var router=express.Router();
+var pm = require('../../lib/PermissionManager');
+var APM=pm.agency;
+var SPM = pm.system;
 
 router.all((req,resp,next)=>{
     if(req.user){
         next();
     }else{
         resp.status(403).json({success:false});
+    }
+})
+
+router.get('/',(req,resp)=>{
+    let lvl = req.roles.grantLevel;
+    if(req.isAgency){
+        if( ! APM.canReadTransactions(lvl)){
+            resp.status(401).json("Not enough privileges");
+            return;
+        }
+
+        accountManager.readTransactionsOfAccount(req.dbSession,req.user.agency)
+        .then((trans)=>{
+            resp.json({success:true,transactions:trans});
+        })
+        .catch(err=>{
+            console.log(err);
+        })
+    }
+    else if(req.isSystem){
+
+    }
+    else{
+
     }
 })
 

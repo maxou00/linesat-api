@@ -8,6 +8,7 @@ function  SystemAdminsManagerBuilder(){
                 let sysadmins = session.getSchema(connection.database).getCollection('sysadmins');
                 let sysadmin = null;
                 sysadmins.find("_id=:id")
+                .fields(['_id','owner','roles'])
                 .bind("id",ref)
                 .execute((_)=>{
                     sysadmin=_;
@@ -26,6 +27,7 @@ function  SystemAdminsManagerBuilder(){
                 let sysadmins = session.getSchema(connection.database).getCollection('sysadmins');
                 let docs=[];
                 sysadmins.find()
+                .fields(['_id','owner','roles'])
                 .execute((_)=>{
                     docs.push(_);
                 })

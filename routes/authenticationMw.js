@@ -1,7 +1,7 @@
 const jwt=require('jsonwebtoken');
 const enums = require('../lib/constants');
-const TOKEN_HEADER="x-access-token";
 
+const tokenConfig = require('../settings.json').token;
 /**
  * @param {Express.Request} req 
  * @param {Express.Response} resp 
@@ -9,11 +9,9 @@ const TOKEN_HEADER="x-access-token";
  */
 
 function  handleToken(req,resp,next){
-    const PRIVATE_KEY="com.linetechnologie.linesat.api.there_Is-a-pie@2019-InTheSky";
-    let token = req.headers[TOKEN_HEADER];
-    console.log(token);
+    let token = req.headers[tokenConfig.header];
     if( token && /^([\w-]+).([\w-]+).([\w-]+)$/gm .test(token)){
-        let decoded=jwt.verify(token,PRIVATE_KEY);
+        let decoded=jwt.verify(token,tokenConfig.privateKey);
         if(decoded){
             req.user=decoded;
             req.token=token;

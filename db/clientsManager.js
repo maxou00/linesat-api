@@ -13,59 +13,61 @@ function CustomerManagerBuilder(){
             return new Promise((resolve,reject)=>{
                 if(obj.gender)obj.gender=obj.gender.toLowerCase();
                 if(obj.lastName) obj.lastName=obj.lastName.toUpperCase();
-                if(
-                    obj.lastName &&
-                    obj.firstName &&
-                    obj.gender &&
-                    (obj.gender=='men' || obj.gender=='women') &&
-                    (obj.email || obj.phone) &&
-                    obj.password
-                ){
-                    if(obj.password){
-                        obj.password= crypto.createHash('SHA1').update(obj.password).digest('hex');
-                    }
-    
-                    let clientDoc={
-                        identity:{
-                            name:{
-                                first:obj.firstName,
-                                last:obj.lastName
-                            },
-                            gender:obj.gender
-                        },
-                        contact:{
-                            email:obj.email,
-                            phone:obj.phone
-                        },
-                        code:crypto.randomBytes(4).join(''),
-                        passwordHash:obj.password,
-                    }
-    
-                    session.startTransaction();
-                    let schema=session.getSchema(connection.database);
-                    let customers=schema.getCollection("customers");
-                    let rs=customers.add(clientDoc);
-                    rs.execute((res)=>{
-                        console.log(res);
-                    })
-                    .then((rs)=>{
-                        session.commit();
-                        resolve(rs);
-                    })
-                    .catch((err)=>{
-                        console.log(err);
-                        session.rollback();
-                        reject(err);
-                    });
-                        
+                if(!obj.lastName || !obj.firstName  || !obj.gender){
+                    reject("Firstname and LastName are required");
+                    return;
                 }
-                else{
-                    reject({
-                        errors:[
-                            'Des parametres sont manquants'
-                        ]
-                    });
+                if ( !obj.gender==='man' || obj.gender==='woman'){
+                    reject("gender must be man or woman");
+                    return;
                 }
+
+                if(!obj.email && !obj.phone){
+                    reject('We need you email or your phone');
+                    return;
+                }
+
+                if(!obj.password){
+                    reject("Your password is not set");
+                    return;
+                }
+
+                if(obj.password){
+                    obj.password= crypto.createHash('SHA1').update(obj.password).digest('hex');
+                }
+    
+                let clientDoc={
+                    identity:{
+                        name:{
+                            first:obj.firstName,
+                            last:obj.lastName
+                        },
+                        gender:obj.gender
+                    },
+                    contact:{
+                        email:obj.email,
+                        phone:obj.phone
+                    },
+                    code:crypto.randomBytes(4).join(''),
+                    passwordHash:obj.password,
+                }
+
+                session.startTransaction();
+                let schema=session.getSchema(connection.database);
+                let customers=schema.getCollection("customers");
+                let rs=customers.add(clientDoc);
+                rs.execute((res)=>{
+                    console.log(res);
+                })
+                .then((rs)=>{
+                    session.commit();
+                    resolve(rs);
+                })
+                .catch((err)=>{
+                    console.log(err);
+                    session.rollback();
+                    reject(err);
+                });
             })
         },
     
