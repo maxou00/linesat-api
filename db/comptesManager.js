@@ -1,8 +1,8 @@
 const connection = require('./connection').config;
 let customerManager=require('./clientsManager');
 const uuidv4=require('uuid/v4');
-
 let genAccountCode = require('../lib/helpers');
+const txnType=require('../lib/constants').txnType;
 
 function ComptesManagerBuilder(){
     
@@ -73,10 +73,6 @@ function ComptesManagerBuilder(){
                         if(agency_doc && agency_doc['_id']){
                             //OK done ! we have got an agency matching the given reference
                             // STEP 2: check if the given customer exists and also fetch the agency account
-
-                            console.log("Promise.all()");
-                            console.log(customerCode);
-                            console.log(agency_doc);
                             return Promise.all([
                                 customerManager()
                                 .readByCustomerCode(session,customerCode),
@@ -151,7 +147,7 @@ function ComptesManagerBuilder(){
                 }
             })
         },
-        
+
         readAccountByCode(session,code=''){
             return new Promise((resolve,reject)=>{
                 let doc=null;
@@ -213,13 +209,69 @@ function ComptesManagerBuilder(){
             })
         },
 
+        generateActivityForAccount(session,accountRef,{txnRef,txnType='DEBIT',amount=0,balanceBefore='',balanceAfter=''}){
+            return new Promise((resolve,reject)=>{
+                this.read(session,accountRef)
+                .then((account)=>{
+                    let doc={
+                        account:accountRef,
+                        txnRef:txnRef,
+                        txnType:txnType,
+                        amount:amount,
+                        balanceBefore:balanceBefore,
+                        balanceAfter:balanceAfter,
+                        date:Date.now()
+                    }
+                    return session
+                    .getSchema(connection.database)
+                    .getCollection("accountActivity")
+                    .add(doc)
+                    .execute();
+                })
+                .then((rs)=>{
+                    resolve(rs.getGeneratedIds()[0]);
+                })
+                .catch(err=>{
+                    reject(err);
+                })
+            })
+        },
+
+        /**
+         * @param {*} session 
+         * @param {string} accountRef 
+         * Read All known account activity
+         */
+        readActivityOfAccount(session,accountRef){
+            return new Promise((resolve,reject)=>{
+                let activities=[];
+                session.getSchema(connection.database)
+                .getCollection("accountActivity")
+                .find("account=:acc")
+                .bind("acc",accountRef)
+                .execute((r)=>{
+                    activities.push(r);
+                })
+                .then((rs)=>{
+                    resolve(activities)
+                })
+                .catch((err)=>{
+                    reject(err);
+                })
+            })
+        },
+
         transact(session,{from='',to='',amount=0,reason=''}){
             console.log(`Starting transfert of ${amount} from ${from} to ${to} at ${Date.now().toString()}`);
             return new Promise((resolve,reject)=>{
                 // Amount have to be positive number
                 if(amount<=0){
-                    reject();
+                    reject("Amount is negative");
                 }
+
+                let ad_activity=null; // Activity Documents
+                let ac_activity=null;
+                let txnRef='';
                 amount=parseFloat(amount);
                 let schema=session.getSchema(connection.database)
                 let accounts=schema.getCollection("accounts");
@@ -235,9 +287,32 @@ function ComptesManagerBuilder(){
                 .then(([r1,r2])=>{
                     console.log(account_to_credit);
                     console.log(account_to_debit);
+
+                    /// right now let's reject transfers from accounts with different currencies.
+                    /// we will add later multiple currency support.
+                    
+                    if(account_to_debit.currency !== account_to_credit.currency){
+                        reject("Accounts don't share the same currency.");
+                    }
                     /// Perfect ! we have [from] and [to] .
                     if(account_to_debit && account_to_credit  && (account_to_debit.amount > amount)){
                         /// Ok Good 
+                        ad_activity={
+                            txnType:txnType.DEBIT,
+                            amount:`${amount} ${account_to_debit.currency}`,
+                            balanceBefore:`${account_to_debit.amount} ${account_to_debit.currency}`,
+                            balanceAfter:`${account_to_debit.amount - amount} ${account_to_debit.currency}`,
+                            reason:reason
+                        }
+
+                        ac_activity={
+                            txnType:txnType.CREDIT,
+                            amount:`${amount} ${account_to_credit.currency}`,
+                            balanceBefore:`${account_to_credit.amount} ${account_to_credit.currency}`,
+                            balanceAfter:`${account_to_credit.amount + amount} ${account_to_credit.currency}`,
+                            reason:reason
+                        }
+
                         session.startTransaction();
                         account_to_debit.amount-=amount;
                         account_to_debit.lastOperationDate=Date.now();
@@ -245,7 +320,6 @@ function ComptesManagerBuilder(){
                         account_to_credit.amount+=amount; /// Credit the [to] with the withdrawn amount
                         account_to_credit.lastOperationDate=Date.now();
 
-                        console.log("Modifying");
                         return accounts.modify("_id=:val")
                         .bind("val",account_to_debit['_id'])
                         .patch(account_to_debit)
@@ -268,10 +342,9 @@ function ComptesManagerBuilder(){
                     .execute();
                 })
                 .then((rs)=>{
-                    console.log(rs);
                     if(rs.getAffectedItemsCount()>0){
                         // Good news . The transaction has succeeded!
-                                    /// Next Step: Persist Transaction document in the transactions collections
+                        /// Next Step: Persist Transaction document in the transactions collections
                         let transDoc={
                             amount:amount,
                             reason:reason,
@@ -292,16 +365,30 @@ function ComptesManagerBuilder(){
                 })
                 .then((r1)=>{
                     if(r1){
-                        return session.commit()
-                        .then(()=>{
-                            return r1;
-                        })
-                    }else{
-                        reject();
+                        txnRef=r1.getGeneratedIds()[0];
+                        ad_activity.txnRef=txnRef;
+                        ac_activity.txnRef=txnRef;
+                        return Promise.all([
+                            this.generateActivityForAccount(session,account_to_debit._id,ad_activity),
+                            this.generateActivityForAccount(session,account_to_credit._id,ac_activity)
+                        ])
+                    }
+                    else{
+                        throw new Error("Transaction failed");
                     }
                 })
-                .then((r)=>{
-                    resolve(r.getGeneratedIds()[0]);
+                .then(([r1,r2])=>{
+                    if(r1 && r2){
+                        return session.commit()
+                        .then(()=>{
+                            return [r1,r2];
+                        })
+                    }else{
+                        throw new Error("Activity not generated");
+                    }
+                })
+                .then(([a1,a2])=>{
+                    resolve(txnRef);
                 })
                 .catch((err)=>{
                     session.rollback();

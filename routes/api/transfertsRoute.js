@@ -11,7 +11,8 @@ router.all((req,resp,next)=>{
     if(req.user){
         next();
     }else{
-        resp.status(403).json({success:false});
+        resp.status(401).json({success:false,message:"Not enough privileges"});
+        return;
     }
 })
 
@@ -19,7 +20,7 @@ router.get('/',(req,resp)=>{
     let lvl = req.roles.grantLevel;
     if(req.isAgency){
         if( ! APM.canReadTransactions(lvl)){
-            resp.status(401).json("Not enough privileges");
+            resp.status(401).json({success:false,message:"Not enough privileges"});
             return;
         }
 
@@ -32,10 +33,25 @@ router.get('/',(req,resp)=>{
         })
     }
     else if(req.isSystem){
+        if( ! SPM.canReadTransactions(lvl)){
+            resp.status(401).json({success:false,message:"Not enough privileges"});
+            return;
+        }
 
+        accountManager.readRootAccountDetails(req.dbSession)
+        .then((acc)=>{
+            return accountManager.readTransactionsOfAccount(req.dbSession,acc._id);
+        })
+        .then((trans)=>{
+            resp.json({success:true,transactions:trans});
+        })
+        .catch(err=>{
+            console.log(err);
+        })
     }
     else{
-
+        resp.status(400).json({success:false});
+        return;
     }
 })
 
