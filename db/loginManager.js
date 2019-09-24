@@ -1,7 +1,8 @@
 const connection = require('./connection').config;
 let crypto = require('crypto');
 const agencyManager= require('./agencesManager');
-const HASH_ALGORITHM ="SHA1";
+
+const HASH_ALGORITHM =require('../settings.json').defaultEncryption;
 
 function LoginManagerBuilder(){
     return {
@@ -14,6 +15,7 @@ function LoginManagerBuilder(){
                 let customer = null;
                 let customers = session.getSchema(connection.database).getCollection("customers");
                 customers.find("(contact.email=:usr OR contact.phone=:usr) AND passwordHash=:pass")
+                .fields(["_id","contact","identity","code"])
                 .bind("usr",emailOrPhone)
                 .bind("pass",pass)
                 .execute((row)=>{
@@ -33,6 +35,7 @@ function LoginManagerBuilder(){
         },
 
         authSysAdmin(session,{username,password}){
+            console.log(username,password);
             return new Promise((resolve,reject)=>{
                 if(!username || !password){
                     reject("Invalid credentials");
@@ -56,6 +59,9 @@ function LoginManagerBuilder(){
                     else{
                         reject();
                     }
+                })
+                .catch((err)=>{
+                    reject(err);
                 })
             })
         },
@@ -106,7 +112,35 @@ function LoginManagerBuilder(){
                     reject(err);
                 })
             })
+        },
+
+        matchPasswordOfCustomer(session,ref="",pass=""){
+            return new Promise((resolve,reject)=>{
+                let user ;
+                let schema = session.getSchema(connection.database);
+                let customers=schema.getCollection("customers");
+
+                customers.find("_id=:ref")
+                .bind("ref",ref)
+                .execute((_)=>{
+                    user=_;
+                })
+                .then(()=>{
+                    let hashed_given_pass = crypto.createHash(HASH_ALGORITHM).update(pass).digest('hex');
+                    if(hashed_given_pass === user.passwordHash){
+                        resolve(true);
+                    }
+                    else{
+                        resolve(false);
+                    }
+                })
+				.catch((er)=>{
+					console.log(er);
+					reject(er);
+				})
+            })
         }
+
     };
 }
 

@@ -88,8 +88,66 @@ router.get('/account/:id',(req,res)=>{
         });
     }else{
         req.status(403).json({success:false});
+        req.dbSession.close();
     }
     
+})
+
+
+router.put('/',(req,resp)=>{
+    if(req.isAgency){
+        let {to,amount,reason} = req.body;
+        let ag_account;
+        let dest_account;
+        accountManager.readAgencyAccountDetails(req.dbSession,req.user.agency)
+        .then((rs)=>{
+            ag_account=rs;
+            return accountManager.readAccountByCode(req.dbSession,to);
+        })
+        .then((rs)=>{
+            dest_account=rs;
+            return accountManager.transact(
+                req.dbSession,
+                {
+                    from:ag_account._id,
+                    to:dest_account._id,
+                    amount:Number.parseFloat(`${amount}`),
+                    reason:`${reason}`
+                }
+            );
+        })
+        .then((rs)=>{
+            resp.json({success:true});
+            req.dbSession.close();
+        })
+        .catch((err)=>{
+            resp.json({success:false});
+            req.dbSession.close();
+        })
+    }
+
+    if(req.isCustomer){
+        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.body.from,req.user.uid)
+        .then((bool)=>{
+            if(bool){
+                return ;
+            }else {
+                throw new Error("Account Is Not Yours");
+            }
+        })
+        .then(()=>{
+            let body = req.body;
+            return accountManager.transact(req.dbSession,{from:body.from,to:body.to,amount:body.amount,reason:body.reason})
+        })
+        .then((_)=>{
+            resp.json({success:true});
+            req.dbSession.close();
+        })
+        .catch((err)=>{
+            resp.status(401).json({success:false,message:err});
+            req.dbSession.close();
+        })
+    }
 })
 
 module.exports=router;

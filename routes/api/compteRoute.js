@@ -3,6 +3,7 @@ var compteManager=require('../../db/comptesManager')();
 var clientManager = require('../../db/clientsManager')();
 var loginManager=require('../../db/loginManager')();
 var agencyManager=require('../../db/agencesManager')();
+var couponManager = require('../../db/couponManager')();
 var constants= require("../../lib/constants");
 var crypto=require('crypto');
 
@@ -90,7 +91,7 @@ router.get('/',(req,resp)=>{
       })
     })
     .then(_accounts=>{
-      res.json({success:true,result:_accounts});
+      resp.json({success:true,result:_accounts});
     })
   }
   // Send back to agency its customers accounts
@@ -124,6 +125,7 @@ router.put('/',(req,resp)=>{
       resp.json({success:true,message:"Ok Done."});
     })
     .catch((err)=>{
+      console.log(err);
       resp.status(403).json({success:false,message:"Account not created."});
     })
   }else{
@@ -186,21 +188,150 @@ router.options('/:accountid/debit',(req,res)=>{
 
 router.post('/:accountid/credit',(req,resp)=>{
   console.log(req.params);
+  console.log(req.body);
   if(req.isAgency){
     if(! APM.canCreditCustomerAccount(req.roles.grantLevel)){
       resp.status(401).json({success:false,message:"Not enough permission"});
       return;
     }
-    compteManager.creditCustomerAccount(req.dbSession,req.params.accountid,req.body.amount)
+
+    compteManager.checkIfIsAgencyOfAccount(req.dbSession,req.user.agency,req.params.accountid)
+    .then((bool)=>{
+      if(bool){
+        return compteManager.creditCustomerAccount(req.dbSession,req.params.accountid,req.body.amount,req.body.reason);
+      }else{
+        throw new Error("You're not the agency of that account");
+      }
+    })
     .then((rs)=>{
       resp.json({success:true,message:"Account credited"})
     })
     .catch((err)=>{
+      console.log(err);
       resp.status(403).json({success:false});
     })
   }else{
     resp.status(403).json({success:false,message:'You\'re not logged in'});
   }
 })
+
+router.get('/:accountid/activity',(req,resp)=>{
+  if(req.isAgency){
+    let lvl = req.roles.grantLevel;
+    if(! APM.canReadTransactions(lvl)){
+      resp.status(401).json({success:false,message:'Unauthorized access'});
+    }
+
+    compteManager.checkIfAccountIsOwnedByAgency(req.dbSession,req.params.accountid,req.user.agency)
+    .then((bool)=>{
+      if(bool){
+        return compteManager.readActivityOfAccount(req.dbSession,req.params.accountid);
+      }
+      else{
+        resp.status(401).json({success:false,message:"You don't have any rights on this account"});
+      }
+    })
+    .then((activities)=>{
+      if(activities){
+        resp.json({success:true,result:activities});
+      }
+    })
+    .catch((err)=>{
+      resp.status(400).json({success:false,message:'Bad request'});
+    })
+  }
+  else if (req.isSystem){
+    let lvl = req.roles.grantLevel;
+    if(! SPM.canReadTransactions(lvl)){
+      resp.status(401).json({success:false,message:'Bad request'});
+    }
+
+    compteManager.readActivityOfAccount(req.dbSession,req.params.accountid)
+    .then((act)=>{
+      resp.json({success:true,result:act});
+    })
+    .catch((err)=>{
+      resp.status(400).json({success:false,message:'Bad request'});
+    })
+  }
+  else if(req.isCustomer){
+    compteManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.accountid,req.user.uid)
+    .then((bool)=>{
+      if(bool){
+        return compteManager.readActivityOfAccount(req.dbSession,req.params.accountid);
+      }
+      else{
+        resp.status(401).json({success:false,message:"You don't have any rights on this account"});
+      }
+    })
+    .then((activities)=>{
+      if(activities){
+        resp.json({success:true,result:activities});
+      }
+    })
+    .catch((err)=>{
+      resp.status(400).json({success:false,message:'Bad request'});
+    })
+  }
+  else{
+    resp.status(400).json({success:false,message:'Bad request'});
+  }
+})
+
+router.get('/:accountid/coupons',(req,resp)=>{
+  if(req.isCustomer){
+    compteManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.accountid,req.user.uid)
+    .then((bool)=>{
+      if(bool){
+        return couponManager.readCouponInitiatedFromAccount(req.dbSession,req.params.accountid);
+      }
+      else{
+        resp.status(401).json({success:false,message:"You don't have any rights on this account"});
+      }
+    })
+    .then((coupons)=>{
+      if(coupons){
+        resp.json({success:true,coupons:coupons});
+      }
+    })
+    .catch((err)=>{
+      resp.status(400).json({success:false,message:'Bad request'});
+    })
+  }
+  else{
+    resp.status(400).json({success:false,message:'Bad request'});
+  }
+})
+
+router.put('/:accountid/coupons',(req,resp)=>{
+	console.log(req.body,req.params,req.user)
+  if(req.isCustomer){
+    compteManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.accountid,req.user.uid)
+    .then((bool)=>{
+      if(bool){
+        let body = req.body;
+        return couponManager.create(req.dbSession,{accountRef:req.params.accountid,amount:body.amount});
+      }
+      else{
+        resp.status(401).json({success:false,message:"You don't have any rights on this account"});
+      }
+    })
+    .then((rs)=>{
+      if(rs){
+        resp.json({success:true,result:rs});
+      }
+    })
+    .catch((err)=>{
+			console.log(err);
+      resp.status(400).json({success:false,message:'Bad request'});
+    })
+  }
+  else{
+    resp.status(400).json({success:false,message:'Bad request'});
+  }
+})
+
+
+
 
 module.exports=router;

@@ -2,6 +2,7 @@ var express=require('express');
 var clientManager=require('../../db/clientsManager')();
 var subManager= require('../../db/subscriptionsManager')();
 var accountManager=require('../../db/comptesManager')();
+var loginManager = require('../../db/loginManager')();
 var router=express.Router();
 var enums= require('../../lib/constants');
 router.all((req,res,next)=>{
@@ -81,35 +82,41 @@ router.get('/account/:aid',(req,res)=>{
 
 router.put('/',(req,resp)=>{
     // Check if the connected user is a customer
-    if(req.isCustomer){
-        // Check if the given account is owned by the currently connected customer
-        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.body.account,req.user.uid)
-        .then((check)=>{
-            if(check){
-                console.log("Account verified");
-                console.log(req.body);
-                subManager.createSubscription(req.dbSession,req.body)
-                .then((id)=>{
-                    resp.json({success:true,message:'Subscription  pushed'});
-                })
-                .catch(err=>{
-                    resp.status(403).json({success:false});
-                })
-            }else{
-                console.log("Account check error");
-                resp.status(403).json({success:false,message:'The provided Account ain\'t yours.'});
-                req.dbSession.close();
-            }
-        })
-        .catch(err=>{
-            console.log(err);
-            resp.status(500).json({success:false});
-            req.dbSession.close();
-        })
-    }else{
+    if(! req.isCustomer){
+        console.log(req.isCustomer);
+        console.log("User is not customer");
         resp.status(403).json({success:false,message:'You are not a customer'});
         req.dbSession.close();
+        return;
     }
+
+    Promise.all([   
+        accountManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.body.account,req.user.uid),
+        loginManager.matchPasswordOfCustomer(req.dbSession,req.user.uid,req.body.password)
+    ]) 
+    .then(([check_a,check_b])=>{
+        console.log(check_a,check_b);
+        if(check_a && check_b){
+            console.log("Account verified");
+            console.log(req.body);
+            subManager.createSubscription(req.dbSession,req.body)
+            .then((id)=>{
+                resp.json({success:true,message:'Subscription  pushed'});
+            })
+            .catch(err=>{
+                resp.status(403).json({success:false});
+            })
+        }else{
+            console.log("Account check error");
+            resp.status(403).json({success:false,message:'The provided Account ain\'t yours.'});
+            req.dbSession.close();
+        }
+    })
+    .catch(err=>{
+        console.log(err);
+        resp.status(500).json({success:false});
+        req.dbSession.close();
+    })
 })
 
 

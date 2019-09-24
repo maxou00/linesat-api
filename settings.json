@@ -1,11 +1,15 @@
 {
+    "app":{
+        "name":"KorisPay",
+        "version":"0.0.1"
+    },
     "token":{
         "header":"x-access-token",
         "privateKey":"com.linetechnologie.linesat.api.there-Is-a-pie@2019-InTheSky",
-        "algorithm":"SHA1",
-        "issuer":"com.linetechnologie.linesat.api.authservice"
+        "algorithm":"SHA256",
+        "issuer":"com.linetechnologie.korispay_api.authservice"
     },
-    "defaultAlgorithm":"SHA1",
+    "defaultEncryption":"SHA256",
     "database":{
         "hostConfig":{
             "host":"localhost",
@@ -19,6 +23,37 @@
             "maxSize":25,
             "maxIdleTime":30000,
             "queueTimeout":10000
+        }
+    },
+    "rootAccount":{
+        "_id": "00005d52894c0000000000000001",
+        "type": "ROOT",
+        "state": "active",
+        "amount": 2000000,
+        "currency": "XOF",
+        "standalone": true
+    }
+    ,
+    "bufferAccount":{
+        "_id": "00005d52894c0000000000000002",
+        "type": "BUFFER",
+        "state": "active",
+        "amount": 0,
+        "currency": "XOF",
+        "standalone": true
+    },
+    "initialAdmin":{
+        "name": {
+            "last": "Kernighan",
+            "first": "Brian"
+        },
+        "gender": "man",
+        "roles":{
+            "grantLevel":6
+        },
+        "credentials": {
+            "username": "cap_tain_n3m0",
+            "password": "M@ximilien2000"
         }
     }
 }

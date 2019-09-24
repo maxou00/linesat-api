@@ -10,6 +10,7 @@ let jwt = require('jsonwebtoken');
 let tokenConfig=require('../../settings.json').token;
 
 router.post('/sys',(req,resp)=>{
+    console.log(req.body);
     if(req.isSystem){
         sysAdManager.readByRef(req.dbSession,req.user.uid)
         .then((sysUser)=>{
@@ -78,6 +79,11 @@ router.post('/agency',(req,resp)=>{
         })
     }
     else{
+        if(! (req.body.username || req.body.password )){
+            resp.status(403).json({success:false,});
+            return;
+        }
+
         loginManager.authAgencyUser(req.dbSession,req.body)
         .then((result) => {
             let data={

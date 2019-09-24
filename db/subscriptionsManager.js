@@ -34,43 +34,44 @@ function  SubscriptionBuilder(){
                     state:enums.subscriptions.WAITING,// WAITING,ONGOING,DONE,ABORTED  
                 };
 
-                // First Step: Fetch the Agency ID using the given account
-                AccountsManager.read(session,obj.account)
-                .then((acc)=>{
-                    subDoc.agencyRef=acc['agency'];
-                    subDoc.customerRef=acc['customer'];
-                    return; 
-                })
-                // Next : Fetch bouquet and Buffer account details
-                .then(()=>{
-                    return BouquetsManager.readByRef(session,obj.formula)
-                })
+                session.startTransaction();
+                Promise.all([
+                    AccountsManager.read(session,obj.account)
+                    .then((acc)=>{
+                        subDoc.agencyRef=acc['agency'];
+                        subDoc.customerRef=acc['customer'];
+                        return; 
+                    }),
+                    BouquetsManager.readByRef(session,obj.formula)
+                    .then(bq=>{
+                        bouquet=bq;
+                        return;
+                    })
+
+                ])
                 .then(bq=>{
-                    bouquet=bq;
                     reason=`Subscription to ${bouquet.label} (${bouquet.pricing.price} ${bouquet.pricing.currency}) for ${obj.duration} ${bouquet.pricing.timeUnit} `;
                     if(bouquet.state==enums.bouquets.ACTIVE){
                         let fb={
                             ref:bouquet['_id'],
                             label:bouquet.label,
-                            price:bouquet.pricing.price
+                            price:bouquet.pricing.price,
+                            currency:bouquet.pricing.currency
                         }
                         subDoc.formula=fb;
-                        return AccountsManager.readBufferAccountDetails(session)
+                        return AccountsManager.bufferAmount(session,obj.account,bouquet.pricing.price*obj.duration,reason);
                     }else{
-                        reject("Impossible Subscription on this formula.");
+                        throw new Error("Impossible Subscription on this formula.");
                     }
                 })
-                .then((buffer)=>{
-                    session.startTransaction();
-                    return AccountsManager.transact(session,{from:obj.account,to:buffer['_id'],amount:bouquet.pricing.price*obj.duration,reason:reason})
-                })
                 .then((txnRef)=>{
-                    console.log(txnRef);
+                    console.log(`Buffer transaction: ${txnRef}`);
                     subDoc.confirmTxnRef=txnRef;
+					console.log(subDoc);
                     if( subDoc.agencyRef && subDoc.customerRef && subDoc.formula && subDoc.duration && subDoc.confirmTxnRef && subDoc.card){
                         return subscriptions.add(subDoc).execute();
                     }else{
-                        reject("Incomplete fields");
+                        throw new Error("Incomplete fields");
                     }
                 })
                 .then((rs)=>{
@@ -80,8 +81,7 @@ function  SubscriptionBuilder(){
                             resolve(rs);
                         })
                     }else{
-                        session.rollback();
-                        reject();
+                        throw new Error();
                     }
                 })
                 .catch(err=>{
@@ -223,7 +223,7 @@ function  SubscriptionBuilder(){
                 let transactions = schema.getCollection("transactions");
                 let subscriptions= schema.getCollection("subscriptions");
 
-                transactions.find("debited.ref=:account AND reason like 'Subscription to %'")
+                transactions.find("debited.ref=:account AND reason like 'Subscription %'")
                 .bind("account",accountRef)
                 .execute((row)=>{
                     if(!(transRefs.includes(row._id))){

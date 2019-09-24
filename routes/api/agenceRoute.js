@@ -2,13 +2,14 @@ var express=require('express');
 var agenceManager=require('../../db/agencesManager')();
 var userManager=require('../../db/agencyUserManager')();
 var loginManager=require('../../db/loginManager')();
+var accountManager = require('../../db/comptesManager')();
 var constants = require('../../lib/constants');
 var PM = require('../../lib/PermissionManager');
 const SPM = PM.system;
 const APM = PM.agency;
 
 var router=express.Router();
-
+ 
 router.all(/^\/(.*)/, (req,resp,next)=>{
     if(req.isSystem || req.isAgency){
         next();
@@ -24,7 +25,7 @@ router.get('/',(req,res)=>{
         resp.status(401).json({success:false,message:'Unauthorized access'});
         return;
     }
- 
+
     //PASSED !!!
     // Check if user has enough privileges
     if(! SPM.canReadAgencies(req.roles.grantLevel)){
@@ -50,6 +51,64 @@ router.get('/',(req,res)=>{
     });
 })
 
+router.get("/account",(req,resp)=>{
+    if(! req.isAgency){
+        resp.status(401).json({success:false,message:'Unauthorized access'});
+        return;
+    }
+
+    /// We check if the current Agency User have sufficient privileges to see the users list. //// _____ TO BE CORRECTED
+    if(!APM.canReadTransactions(req.roles.grantLevel)){
+        resp.status(401).json({success:false,message:"Not enough permission"});
+        return;
+    }
+
+    accountManager.readAgencyAccountDetails(req.dbSession,req.user.agency)
+    .then((result) => {
+        resp.json({
+            success:true,
+            result:result
+        });
+    })
+    .catch((err) => {
+        resp.json({
+            success:false,
+            error:err
+        })
+    });
+})
+
+router.get("/activity",(req,resp)=>{
+    if(! req.isAgency){
+        resp.status(401).json({success:false,message:'Unauthorized access'});
+        return;
+    }
+
+    /// We check if the current Agency User have sufficient privileges to see the users list. //// _____ TO BE CORRECTED
+    if(!APM.canReadTransactions(req.roles.grantLevel)){
+        resp.status(401).json({success:false,message:"Not enough permission"});
+        return;
+    }
+
+    accountManager.readAgencyAccountDetails(req.dbSession,req.user.agency)
+    .then((result) => {
+        return accountManager.readActivityOfAccount(req.dbSession,result._id);
+    })
+    .then((rs)=>{
+        console.log(rs);
+        resp.json({
+            success:true,
+            result:rs
+        });
+    })
+    .catch((err) => {
+        resp.json({
+            success:false,
+            error:err
+        })
+    });
+})
+
 router.get('/users',(req,resp)=>{
     if(! req.isAgency){
         resp.status(401).json({success:false,message:'Unauthorized access'});
@@ -62,20 +121,18 @@ router.get('/users',(req,resp)=>{
     }
 
     userManager.readUsersByAgency(req.dbSession,req.user.agency)
-        .then((result) => {
-            resp.json({
-                success:true,
-                result:result
-            });
-        })
-        .catch((err) => {
-            resp.json({
-                success:false,
-                errors:[
-                    err
-                ]
-            })
+    .then((result) => {
+        resp.json({
+            success:true,
+            result:result
         });
+    })
+    .catch((err) => {
+        resp.json({
+            success:false,
+            error:err
+        })
+    });
 })
 
 router.put('/',(req,res)=>{
@@ -89,7 +146,7 @@ router.put('/',(req,res)=>{
         return;
     }
 
-    agenceManager.create(req.dbSession,{user:req.body,agency:req.user.agency})
+    agenceManager.create(req.dbSession,req.body)
     .then((result) => {
         res.json({
             success:true,

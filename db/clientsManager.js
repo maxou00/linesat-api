@@ -1,6 +1,9 @@
 const connection = require('./connection').config;
 const crypto=require('crypto');
+const generator = require('../lib/account_code_gen');
 
+
+const HASH_ALGORITHM = require('../settings.json').defaultEncryption;
 /**
  * NEVER TRUST USER INPUT !
  * KEEP INSPECTING CODE TO DETECT DEAD CODE,
@@ -8,7 +11,6 @@ const crypto=require('crypto');
 
 function CustomerManagerBuilder(){
     return {
-
         create(session,obj={}){
             return new Promise((resolve,reject)=>{
                 if(obj.gender)obj.gender=obj.gender.toLowerCase();
@@ -33,7 +35,7 @@ function CustomerManagerBuilder(){
                 }
 
                 if(obj.password){
-                    obj.password= crypto.createHash('SHA1').update(obj.password).digest('hex');
+                    obj.password = crypto.createHash(HASH_ALGORITHM).update(obj.password).digest('hex');
                 }
     
                 let clientDoc={
@@ -46,7 +48,10 @@ function CustomerManagerBuilder(){
                     },
                     contact:{
                         email:obj.email,
-                        phone:obj.phone
+                        phone:{
+                            code:'+229',
+                            number:obj.phone
+                        }
                     },
                     code:crypto.randomBytes(4).join(''),
                     passwordHash:obj.password,
@@ -71,7 +76,7 @@ function CustomerManagerBuilder(){
             })
         },
     
-        readByRef(session,id=''){
+         readByRef(session,id=''){
             return new Promise((resolve,reject)=>{
                 let schema= session.getSchema(connection.database);
                 let customers= schema.getCollection("customers");

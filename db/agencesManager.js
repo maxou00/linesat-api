@@ -2,7 +2,7 @@ const connection = require('./connection').config;
 const crypto=require('crypto');
 
 const accountManager= require('./comptesManager')();
-const HASH_ALGORITHM="SHA1"
+const HASH_ALGORITHM= require('../settings.json').defaultEncryption;
 
 function AgencyManagerBuilder(){
     return {
@@ -13,6 +13,10 @@ function AgencyManagerBuilder(){
                 /// !!!! NEXT VALIDATION LEVEL !!!! <<<TEST USER DETAILS AGAINST EXPRESSIONS>>>
 
                 /// Validate Localisation informations
+                ///Set Default Country. Algorithm will be reviewed when multi country support arrives.
+                obj.country='BJ';
+                console.log(obj);
+                
                 if( !obj.country || !obj.city ){
                     valid=false;
                     reject("Invalid position informations");
@@ -51,7 +55,10 @@ function AgencyManagerBuilder(){
                         },
                         contact:{
                             email:obj.email || '',
-                            phone:obj.phone || ''
+                            phone:{
+                                code:"+229",
+                                number:obj.phone
+                            }
                         },
                         creationDate:Date.now()
                     }
@@ -67,6 +74,7 @@ function AgencyManagerBuilder(){
                         console.log(rs1);
                         /// STEP 2: Retrieve generated id
                         genId=rs1.getGeneratedIds()[0];
+                        console.log(genId);
                         if(genId){
                             let agencyAdminDoc={
                                 owner:{
@@ -82,7 +90,7 @@ function AgencyManagerBuilder(){
                                     passwordHash:crypto.createHash(HASH_ALGORITHM).update(obj.password).digest('hex')
                                 },
                                 roles:{
-                                    grants:[1,2,3]
+                                    grantLevel:4
                                 },
                                 creationDate:Date.now()
                             }
@@ -113,7 +121,7 @@ function AgencyManagerBuilder(){
                     })
                     .then((rootAccount)=>{
                         if(rootAccount){
-                            let reason = `Injecting ${obj.initialAmount} into agency account ${genAAId} as Initial Amount.`;
+                            let reason = `Initial Amount ${obj.initialAmount} into agency account ${genAAId}.`;
                             return accountManager.transact(session,{from:rootAccount._id,to:genAAId,amount:obj.initialAmount,reason:reason})
                         }
                     })

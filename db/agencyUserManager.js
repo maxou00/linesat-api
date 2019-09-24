@@ -2,7 +2,7 @@ const agencyManager= require('./agencesManager');
 const connection = require('./connection').config;
 const crypto=require('crypto');
 
-const HASH_ALGORITHM='SHA1';
+const HASH_ALGORITHM= require('../settings.json').defaultEncryption;
 
 function AgencyUserManagerBuilder(){
     return {

@@ -1,8 +1,10 @@
 const connection = require('./connection').config;
 let customerManager=require('./clientsManager');
 const uuidv4=require('uuid/v4');
-let genAccountCode = require('../lib/helpers');
+let genAccountCode = require('../lib/account_code_gen');
 const txnType=require('../lib/constants').txnType;
+const appName = require('../settings.json').app.name;
+
 
 function ComptesManagerBuilder(){
     
@@ -18,10 +20,15 @@ function ComptesManagerBuilder(){
         createAgencyAccount(session,agencyRef='',abortIfExist=true){
             return new Promise((resolve,reject)=>{
                 
+                if(!agencyRef){
+                    throw Error("no agency provided.");
+                }
+
                 let agencyAccountDoc={
                     type:"BUSINESS",
                     amount:0,
-                    agency:agency,
+                    currency:'XOF',
+                    agency:agencyRef,
                     code:genAccountCode(),
                     creationDate:Date.now()
                 }
@@ -61,15 +68,19 @@ function ComptesManagerBuilder(){
                     let schema = session.getSchema(connection.database);
                     let customers= schema.getCollection('customers');
                     let accounts = schema.getCollection('accounts');
+					let agencies = schema.getCollection("agencies");
                     let agency_doc=null;
                     let agency_account=null;
                     let customer_doc=null;
 
                    let gen_id;
                     let matchedDocs=[];
-                    agencyManager().readByRef(session,agency)
-                    .then((ag)=>{
-                        agency_doc=ag;
+                    agencies.find("_id=:id")
+					.bind("id",agency)
+					.execute((_ag)=>{
+						agency_doc=_ag;
+					})
+                    .then((rs)=>{
                         if(agency_doc && agency_doc['_id']){
                             //OK done ! we have got an agency matching the given reference
                             // STEP 2: check if the given customer exists and also fetch the agency account
@@ -115,7 +126,8 @@ function ComptesManagerBuilder(){
                                 agency:agency_doc['_id'],
                                 customer:customer_doc['_id'],
                                 amount:0,
-                                code:genAccountCode(),
+                                currency:'XOF',
+                                code:genAccountCode(16),
                                 creationDate:Date.now()
                             }
                             console.log("creating doc");
@@ -128,7 +140,7 @@ function ComptesManagerBuilder(){
                         console.log(rw2);
                         if(rw2.getGeneratedIds() && rw2.getGeneratedIds()[0]) gen_id=rw2.getGeneratedIds()[0];
                         console.log(gen_id);
-                        return this.transact(session,{from:agency_account['_id'],to:gen_id,amount:amount})
+                        return this.transact(session,{from:agency_account['_id'],to:gen_id,amount:amount,reason:"Credit initial"})
                     })
                     .then((res)=>{
                         return session.commit();
@@ -209,8 +221,9 @@ function ComptesManagerBuilder(){
             })
         },
 
-        generateActivityForAccount(session,accountRef,{txnRef,txnType='DEBIT',amount=0,balanceBefore='',balanceAfter=''}){
+        generateActivityForAccount(session,accountRef,{txnRef,txnType='DEBIT',amount=0,balanceBefore='',balanceAfter='',reason='',sender={},receiver={}}){
             return new Promise((resolve,reject)=>{
+                session.startTransaction();
                 this.read(session,accountRef)
                 .then((account)=>{
                     let doc={
@@ -220,6 +233,9 @@ function ComptesManagerBuilder(){
                         amount:amount,
                         balanceBefore:balanceBefore,
                         balanceAfter:balanceAfter,
+                        reason:reason,
+                        sender:sender,
+                        receiver:receiver,
                         date:Date.now()
                     }
                     return session
@@ -229,9 +245,11 @@ function ComptesManagerBuilder(){
                     .execute();
                 })
                 .then((rs)=>{
+                    session.commit();
                     resolve(rs.getGeneratedIds()[0]);
                 })
                 .catch(err=>{
+                    session.rollback();
                     reject(err);
                 })
             })
@@ -261,47 +279,145 @@ function ComptesManagerBuilder(){
             })
         },
 
+        /**
+         * 
+         * @param {} session 
+         * @param {string} accountRef 
+         * Retrieves from db account data with its owner information.
+         * If the account type is "ROOT" or "BUFFER its owner is the system 
+         * and it return {name:"SYSTEM_NAME",type:"SYSTEM"}. System Name is defined in [settings.json]
+         * Return Value Scheme:
+         * `{account,owner}` 
+         */
+
+        readAccountWithOwner(session,accountRef){
+            return new Promise((resolve,reject)=>{
+                let account={};
+                let owner={};
+				let schema = session.getSchema(connection.database);
+                this.read(session,accountRef)
+                .then((a)=>{
+                    account=a;
+                    if(account.type === "CUSTOMER"){
+                        let customers = schema.getCollection("customers");
+                        return customers.find("_id=:id")
+                        .bind("id",account.customer)
+                        .execute((r)=>{
+                            owner=r;
+                        })
+                    }
+                    else if(account.type === "BUSINESS"){
+                        let agencies = session.getSchema(connection.database).getCollection("agencies");
+                        return agencies.find("_id=:id")
+                        .bind("id",account.agency)
+                        .execute((r)=>{
+                            owner=r;
+                        })
+                    }
+                    else {
+                        resolve({account:account,owner:{name:appName,type:'SYSTEM'}});
+                        return;
+                    }
+                })
+                .then(()=>{
+                    resolve({account:account,owner:owner});
+                    return;
+                })
+                .catch((err)=>{
+                    reject(err);
+                })
+            })
+        },
+
         transact(session,{from='',to='',amount=0,reason=''}){
-            console.log(`Starting transfert of ${amount} from ${from} to ${to} at ${Date.now().toString()}`);
+            console.log(`Transfert de ${amount} depuis ${from} vers ${to} a ${Date.now().toString()} pour ${reason}`);
             return new Promise((resolve,reject)=>{
                 // Amount have to be positive number
-                if(amount<=0){
-                    reject("Amount is negative");
+                if(amount<=0){ 
+                    reject("Amount is invalid");
                 }
+                let ad_activity; // Activity Documents
+                let ac_activity;
 
-                let ad_activity=null; // Activity Documents
-                let ac_activity=null;
-                let txnRef='';
+                let ad_owner;
+                let ac_owner;
+
+                let txnRef=''; /// we get the inserted transaction reference.
                 amount=parseFloat(amount);
+
                 let schema=session.getSchema(connection.database)
-                let accounts=schema.getCollection("accounts");
-                let transactions = schema.getCollection('transactions');
+                let accounts=schema.getCollection("accounts"); /// accounts scheme
+                let transactions = schema.getCollection('transactions'); /// transactions scheme
                 
-                let account_to_debit=null;
+                let account_to_debit=null; /// Accounts doc
                 let account_to_credit=null;
     
+                ///Fetch the account docs
                 Promise.all([
-                    accounts.find("_id=:id").bind("id",from).execute((ac)=>{account_to_debit=ac;}),
-                    accounts.find("_id=:id").bind("id",to).execute((row)=>{account_to_credit=row;})
+                    this.readAccountWithOwner(session,from),
+                    this.readAccountWithOwner(session,to)
                 ])
                 .then(([r1,r2])=>{
-                    console.log(account_to_credit);
-                    console.log(account_to_debit);
+                    console.log(r1,r2);
+                    account_to_debit=r1.account;
+                    account_to_credit=r2.account;
+                    ad_owner=r1.owner;
+                    ac_owner=r2.owner;
 
                     /// right now let's reject transfers from accounts with different currencies.
                     /// we will add later multiple currency support.
                     
                     if(account_to_debit.currency !== account_to_credit.currency){
-                        reject("Accounts don't share the same currency.");
+                        return reject("Accounts don't share the same currency.");
                     }
                     /// Perfect ! we have [from] and [to] .
                     if(account_to_debit && account_to_credit  && (account_to_debit.amount > amount)){
-                        /// Ok Good 
+
+                        ///For each activity document generated, we provide information about the sender or the receiver.
+                        let ad_owner_name;
+                        let ac_owner_name;
+                        let ad_owner_type;
+                        let ac_owner_type;
+                        if(ad_owner.type && ad_owner.type === 'SYSTEM'){
+                            ad_owner_type = 'SYSTEM';
+                            ad_owner_name = ad_owner.name;
+                        }
+                        if(ac_owner.type && ac_owner.type === 'SYSTEM'){
+                            ac_owner_type = 'SYSTEM';
+                            ac_owner_name = ac_owner.name;
+                        }
+
+                        if(account_to_debit.type === 'BUSINESS'){
+                            ad_owner_type = 'AGENCY';
+                            ad_owner_name = ad_owner.identity.name;
+                        }
+
+                        if(account_to_credit.type === 'BUSINESS'){
+                            ac_owner_type = 'AGENCY';
+                            ac_owner_name = ac_owner.identity.name;
+                        }
+
+                        if(account_to_debit.type === 'CUSTOMER'){
+                            ad_owner_type = 'CUSTOMER';
+                            ad_owner_name = ad_owner.identity.name.first + " " + ad_owner.identity.name.last;
+                        }
+
+                        if(account_to_credit.type === 'CUSTOMER'){
+                            ac_owner_type = 'CUSTOMER';
+                            ac_owner_name = ac_owner.identity.name.first + " " + ac_owner.identity.name.last;
+                        }
+
+                        /// Ok Good let's generate Activities
                         ad_activity={
                             txnType:txnType.DEBIT,
                             amount:`${amount} ${account_to_debit.currency}`,
                             balanceBefore:`${account_to_debit.amount} ${account_to_debit.currency}`,
                             balanceAfter:`${account_to_debit.amount - amount} ${account_to_debit.currency}`,
+                            sender:{},
+                            receiver:{
+                                name:ac_owner_name,
+                                type:ac_owner_type
+                            },
                             reason:reason
                         }
 
@@ -310,6 +426,11 @@ function ComptesManagerBuilder(){
                             amount:`${amount} ${account_to_credit.currency}`,
                             balanceBefore:`${account_to_credit.amount} ${account_to_credit.currency}`,
                             balanceAfter:`${account_to_credit.amount + amount} ${account_to_credit.currency}`,
+                            sender:{
+                                name:ad_owner_name,
+                                type:ad_owner_type
+                            },
+                            receiver:{},
                             reason:reason
                         }
 
@@ -325,14 +446,14 @@ function ComptesManagerBuilder(){
                         .patch(account_to_debit)
                         .execute();
                     }else{
-                        reject();
+                        return reject();
                     }
                 }) 
                 .then((rs)=>{
                     if( rs && rs.getAffectedItemsCount()>0){
                         return;
                     }else{
-                        reject();
+                        return reject();
                     }
                 })
                 .then(()=>{
@@ -392,6 +513,47 @@ function ComptesManagerBuilder(){
                 })
                 .catch((err)=>{
                     session.rollback();
+                    reject(err);
+                })
+            })
+        },
+
+        /**
+         * 
+         * @param {*} session 
+         * @param {String} account 
+         * @param {Number} amount 
+         * @param {string} reason 
+         * 
+         * Transfers [amount] from [from] to buffer account.
+         */
+
+        bufferAmount(session,account="",amount=0,reason=""){
+            return new Promise((resolve,reject)=>{
+                this.readBufferAccountDetails(session)
+                .then((buffer)=>{
+                    return this.transact(session,{from:account,to:buffer._id,amount:amount,reason:reason});
+                })
+                .then((txnID)=>{
+					console.log(`bufferAmount() txnID:${txnID}`);
+                    resolve(txnID);
+                })
+                .catch((err)=>{
+                    reject(err);
+                })
+            })
+        },
+
+        unBufferAmount(session,destinationAccount="",amount=0,reason=""){
+            return new Promise((resolve,reject)=>{
+                this.readBufferAccountDetails(session)
+                .then((buffer)=>{
+                    return this.transact(session,{from:buffer._id,to:destinationAccount,amount:amount,reason:reason});
+                })
+                .then((txnID)=>{
+                    resolve(txnID);
+                })
+                .catch((err)=>{
                     reject(err);
                 })
             })
@@ -716,6 +878,38 @@ function ComptesManagerBuilder(){
             })
         },
 
+        checkIfAccountIsOwnedByAgency(session,accountRef,agencyRef){
+            return new Promise((resolve,reject)=>{
+                this.read(session,accountRef)
+                .then((doc)=>{
+                    if(doc.type==='AGENCY' && doc.agency===agencyRef){
+                        resolve(true);
+                    }else{
+                        resolve(false);
+                    }
+                })
+                .catch(err=>{
+                    reject(err);
+                })
+            })
+        },
+
+        checkIfIsAgencyOfAccount(session,agencyId='',customerAccount=''){
+            return new Promise((resolve,reject)=>{
+                this.read(session,customerAccount)
+                .then((doc)=>{
+                    if(doc.type==='CUSTOMER' && doc.agency===agencyId){
+                        resolve(true);
+                    }else{
+                        resolve(false);
+                    }
+                })
+                .catch(err=>{
+                    reject(err);
+                })
+            })
+        },
+
         updateCustomerAccount(session,id='',obj={}){
             return new Promise((resolve,reject)=>{
                 let doc={}
@@ -738,9 +932,11 @@ function ComptesManagerBuilder(){
             })
         },
 
-        creditCustomerAccount(session,id='',amount){
+        creditCustomerAccount(session,id='',amount,reason=''){
             console.log(id);
             console.log(amount);
+            if(!reason)reason = "Recharge";
+
             return new Promise((resolve,reject)=>{
                 let accounts = session.getSchema(connection.database).getCollection("accounts");
                 let agencyId='';
@@ -753,7 +949,7 @@ function ComptesManagerBuilder(){
                 })
                 .then(()=>{
                     if(id && agencyId){
-                        // FETCH The agency account 
+                        //Fetch The agency account 
                         let accounts = session.getSchema(connection.database).getCollection("accounts");
                         return accounts.find("agency=:id AND type='BUSINESS'")
                         .bind('id',agencyId)
@@ -766,7 +962,7 @@ function ComptesManagerBuilder(){
                 })
                 .then((_)=>{
                     if(id && agency_account_id){
-                        return this.transact(session,{to:id,from:agency_account_id,amount:amount});
+                        return this.transact(session,{to:id,from:agency_account_id,amount:amount,reason:reason});
                     }else{
                         reject();
                     }

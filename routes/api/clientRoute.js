@@ -58,13 +58,17 @@ router.put('/',(req,res)=>{
                     message:"Customer Created."
                 }
             );
-        }).catch((err) => {
+	req.dbSession.close();
+        })
+        .catch((err) => {
             res.json({
                 success:false,
                 message:"An error occured."
-            });
+            }
+	
+        );
+req.dbSession.close();
     });
-    req.dbSession.close();
 })
 
 router.patch('/',(req,res)=>{
