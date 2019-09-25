@@ -282,14 +282,14 @@ router.get('/:accountid/coupons',(req,resp)=>{
   if(req.isCustomer){
     compteManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.accountid,req.user.uid)
     .then((bool)=>{
-      if(bool){
-        return couponManager.readCouponInitiatedFromAccount(req.dbSession,req.params.accountid);
+      if(!bool){
+        throw new Error("Access Violation");
       }
-      else{
-        resp.status(401).json({success:false,message:"You don't have any rights on this account"});
-      }
+      console.log(req.params.accountid);
+      return couponManager.readCouponInitiatedFromAccount(req.dbSession,req.params.accountid);
     })
     .then((coupons)=>{
+      console.log(coupons);
       if(coupons){
         resp.json({success:true,coupons:coupons});
       }
@@ -332,6 +332,34 @@ router.put('/:accountid/coupons',(req,resp)=>{
 })
 
 
+router.get("/:accountid/coupons/:couponid/pin",(req,res)=>{
+  if(! req.isCustomer){
+    resp.status(400).json({success:false,message:'Bad request'});
+    return;
+  }
+  Promise.all([
+    compteManager.checkIfAccountIsOwnedByCustomer(req.dbSession,req.params.accountid,req.user.uid),
+    couponManager.isCouponEmittedFromAccount(session,req.params.accountid,req.params.couponid)
+  ])
+  
+  .then(([isOwner,isEmitter])=>{
+    if(isOwner && isEmitter){
+      return couponManager.getPinOfCoupon(req.dbSession,req.params.couponid);
+    }
+    else{
+      throw new Error("You don't have any rights on this account and this coupon.");
+    }
+  })
+  .then((rs)=>{
+    if(rs){
+      resp.json({success:true,coupon:req.params.couponid,pin:rs});
+    }
+  })
+  .catch((err)=>{
+    console.log(err);
+    resp.status(400).json({success:false,message:'Bad request'});
+  })
 
+})
 
 module.exports=router;

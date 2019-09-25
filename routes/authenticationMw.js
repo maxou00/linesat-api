@@ -15,7 +15,6 @@ function  handleToken(req,resp,next){
         if(decoded){
             req.user=decoded;
             req.token=token;
-            console.log(decoded);
             if(decoded.type===enums.UserType.AGENCY){
                 req.isAgency=true;
             }

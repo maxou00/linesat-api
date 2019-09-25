@@ -17,20 +17,36 @@ function CouponManagerBuilder(){
                 session.startTransaction();
                 accountManager.readAccountWithOwner(session,accountRef)
                 .then((withName)=>{
-console.log(withName);
                     account=withName.account;
                     owner= withName.owner;
                     return accountManager.bufferAmount(session,accountRef,amount,`Coupon ${amount} ${withName.account.currency}`)
                 })
                 .then((txnID)=>{
+                    let type;
+                    let name;
+                    if(account.type === "CUSTOMER"){
+                        type="CUSTOMER";
+                        name = owner.identity.name.first + " " + owner.identity.name.last;
+                    }
+
+                    else if(account.type === "BUSINESS"){
+                        type="BUSINESS";
+                        name = owner.identity.name;
+                    }
+
+                    else{
+                        type = owner.type;
+                        name=owner.name;
+                    }
+
                     let coupon = {
                         state:couponState.ACTIVE,
                         code:gen(9),
                         amount:amount,
                         currency:account.currency,
                         emitter:{
-                            name:owner.name,
-                            type:owner.type,
+                            name:name,
+                            type:type,
                             account:account._id
                         },
                         emissionDate:Date.now(),
@@ -59,7 +75,7 @@ console.log(withName);
 
         getPinOfCoupon(session,couponRef){
             return new Promise((resolve,reject)=>{
-                let code;
+                let code="";
                 let schema= session.getSchema(connection.database);
                 let pinCodes= schema.getCollection("couponPinCode");
                 pinCodes.find("coupon=:coupon")
@@ -74,6 +90,22 @@ console.log(withName);
                     reject(err);
                 })
             })
+        },
+
+        isCouponEmittedFromAccount(session,account,coupon){
+            return new Promise((resolve,reject)=>{
+                this.readCouponByRef(session,coupon)
+                .then((coupon)=>{
+                    if(coupon.emitter.account === account){
+                        resolve(true);
+                    }else{
+                        resolve(false);
+                    }
+                })
+                .catch((err)=>{
+                    reject(err);
+                })
+            });
         },
 
         createPinForCoupon(session,couponRef){
@@ -139,7 +171,6 @@ console.log(withName);
                 let coupon;
                 let pinEntry;
                 let destination;
-
                 let schema= session.getSchema(connection.database);
                 let coupons= schema.getCollection("coupons");
                 let pins = schema.getCollection("couponPinCode");
@@ -271,11 +302,11 @@ console.log(withName);
             return new Promise((resolve,reject)=>{
                 let coupon_list=[];
                 let schema= session.getSchema(connection.database);
-                let coupons= schema.getCollection("coupons");
+                let coupons = schema.getCollection("coupons");
                 coupons.find("emitter.account=:ref")
                 .bind("ref",accountRef)
                 .execute((_)=>{
-                    coupon_list.push[_];
+                    coupon_list.push(_);
                 })
                 .then(()=>{
                     resolve(coupon_list);
